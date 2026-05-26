@@ -4,9 +4,14 @@ import { FloatingButtons } from '@/components/layout/FloatingButtons';
 import { HeroSection } from '@/components/home/HeroSection';
 import { FeaturedCollection } from '@/components/home/FeaturedCollection';
 import { CategoryCarousel } from '@/components/home/CategoryCarousel';
-import { featured, tees, bottoms } from '@/lib/mock-data';
+import { getProducts } from '@/lib/data-store';
 
-export default function HomePage() {
+export default async function HomePage() {
+  const all = await getProducts();
+  const featured = all.filter((p) => p.category === 'featured');
+  const tees = all.filter((p) => p.category === 'tees');
+  const bottoms = all.filter((p) => p.category === 'bottoms');
+
   return (
     <>
       <Header />

@@ -8,6 +8,7 @@ export interface Product {
   stock: number;
   description?: string;
   sizes?: string[];
+  imageUrl?: string;
 }
 
 export interface NavItem {

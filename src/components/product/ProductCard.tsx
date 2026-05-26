@@ -17,7 +17,17 @@ export function ProductCard({ product }: ProductCardProps) {
         className="relative w-full group block overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-foreground"
       >
         <div className="transition-transform duration-300 group-hover:scale-105">
-          <Placeholder aspectRatio="1/1" variant="light" />
+          {product.imageUrl ? (
+            <div className="relative w-full" style={{ aspectRatio: '1/1' }}>
+              <img
+                src={product.imageUrl}
+                alt={product.name}
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+            </div>
+          ) : (
+            <Placeholder aspectRatio="1/1" variant="light" />
+          )}
         </div>
       </Link>
 

@@ -3,7 +3,9 @@ import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { ProductGallery } from '@/components/product/ProductGallery';
 import { ProductInfo } from '@/components/product/ProductInfo';
-import { allProducts } from '@/lib/mock-data';
+import { getProductById } from '@/lib/data-store';
+
+export const dynamic = 'force-dynamic';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -11,7 +13,7 @@ interface Props {
 
 export default async function ProductPage({ params }: Props) {
   const { id } = await params;
-  const product = allProducts.find((p) => p.id === id);
+  const product = await getProductById(id);
 
   if (!product) notFound();
 
