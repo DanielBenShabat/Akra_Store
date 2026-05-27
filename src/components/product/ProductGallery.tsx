@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import type { Product } from '@/types';
 import { Placeholder } from '@/components/ui/Placeholder';
 
@@ -9,11 +10,14 @@ export function ProductGallery({ product }: ProductGalleryProps) {
   return (
     <div className="w-full">
       {product.imageUrl ? (
-        <div className="relative w-full" style={{ aspectRatio: '4/5' }}>
-          <img
+        <div className="relative w-full aspect-[4/5]">
+          <Image
             src={product.imageUrl}
             alt={product.name}
-            className="absolute inset-0 w-full h-full object-cover"
+            fill
+            className="object-cover"
+            sizes="(max-width: 768px) 100vw, 50vw"
+            priority
           />
         </div>
       ) : (

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import type { Product } from '@/types';
 import { Placeholder } from '@/components/ui/Placeholder';
 import { formatPrice } from '@/lib/utils';
@@ -18,11 +19,13 @@ export function ProductCard({ product }: ProductCardProps) {
       >
         <div className="transition-transform duration-300 group-hover:scale-105">
           {product.imageUrl ? (
-            <div className="relative w-full" style={{ aspectRatio: '1/1' }}>
-              <img
+            <div className="relative w-full aspect-square">
+              <Image
                 src={product.imageUrl}
                 alt={product.name}
-                className="absolute inset-0 w-full h-full object-cover"
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 50vw, (max-width: 1280px) 33vw, 25vw"
               />
             </div>
           ) : (

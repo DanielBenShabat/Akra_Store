@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { toast } from 'sonner';
+import { ImageIcon, Loader2, X } from 'lucide-react';
 import type { Product, ProductCategory } from '@/types';
 import {
   Dialog,
@@ -32,6 +34,7 @@ import {
 import { Checkbox } from '@/components/admin-ui/checkbox';
 import { Button } from '@/components/admin-ui/button';
 import { Label } from '@/components/admin-ui/label';
+import { uploadProductImageAction } from './actions';
 
 const TEE_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 const BOTTOM_SIZES = ['28', '30', '32', '34', '36'];
@@ -60,6 +63,10 @@ interface Props {
 }
 
 export default function ProductFormDialog({ open, onOpenChange, product, onSubmit, pending }: Props) {
+  const [isUploading, setIsUploading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
     defaultValues: {
@@ -88,8 +95,41 @@ export default function ProductFormDialog({ open, onOpenChange, product, onSubmi
             }
           : { name: '', price: 0, category: 'tees', stock: 0, description: '', sizes: [], imageUrl: '' }
       );
+      setPreviewUrl(product?.imageUrl ?? null);
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   }, [open, product, form]);
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    setPreviewUrl(URL.createObjectURL(file));
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const result = await uploadProductImageAction(formData);
+
+    if (result.error) {
+      toast.error(`Upload failed: ${result.error}`);
+      setPreviewUrl(form.getValues('imageUrl') || null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    } else {
+      form.setValue('imageUrl', result.url!);
+      setPreviewUrl(result.url!);
+    }
+
+    setIsUploading(false);
+  }
+
+  function clearImage() {
+    form.setValue('imageUrl', '');
+    setPreviewUrl(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
 
   const handleSubmit = form.handleSubmit((data) => {
     const cleaned: ProductFormValues = {
@@ -239,31 +279,82 @@ export default function ProductFormDialog({ open, onOpenChange, product, onSubmi
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="imageUrl"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Image URL</FormLabel>
-                  <FormControl>
-                    <Input type="url" placeholder="https://..." {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* Image upload */}
+            <FormItem>
+              <FormLabel>Product Image</FormLabel>
+              <div className="space-y-3">
+                {previewUrl && (
+                  <div className="relative w-24 h-24 rounded-md overflow-hidden border border-border">
+                    {isUploading && (
+                      <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/50">
+                        <Loader2 className="h-5 w-5 text-white animate-spin" />
+                      </div>
+                    )}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
+                    {!isUploading && (
+                      <button
+                        type="button"
+                        onClick={clearImage}
+                        className="absolute top-1 right-1 z-10 rounded-full bg-black/60 p-0.5 text-white hover:bg-black/80"
+                        aria-label="Remove image"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                <label
+                  htmlFor="product-image-input"
+                  className={`flex items-center gap-2 w-full cursor-pointer rounded-md border border-input bg-background px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground ${isUploading ? 'pointer-events-none opacity-50' : ''}`}
+                >
+                  {isUploading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+                      <span>Uploading image…</span>
+                    </>
+                  ) : (
+                    <>
+                      <ImageIcon className="h-4 w-4 shrink-0" />
+                      <span>{previewUrl ? 'Replace image' : 'Choose image'}</span>
+                    </>
+                  )}
+                  <input
+                    id="product-image-input"
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    disabled={isUploading}
+                    onChange={handleFileChange}
+                  />
+                </label>
+              </div>
+            </FormItem>
 
             <DialogFooter className="pt-2">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
-                disabled={pending}
+                disabled={pending || isUploading}
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={pending}>
-                {pending ? 'Saving…' : product ? 'Save Changes' : 'Add Product'}
+              <Button type="submit" disabled={pending || isUploading}>
+                {isUploading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Uploading…
+                  </>
+                ) : pending ? (
+                  'Saving…'
+                ) : product ? (
+                  'Save Changes'
+                ) : (
+                  'Add Product'
+                )}
               </Button>
             </DialogFooter>
           </form>
