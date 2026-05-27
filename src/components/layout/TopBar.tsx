@@ -1,6 +1,7 @@
-import { Search, User, ShoppingBag, ChevronDown } from 'lucide-react';
+import { Search, User, ChevronDown } from 'lucide-react';
 import { IconButton } from '@/components/ui/IconButton';
 import { Placeholder } from '@/components/ui/Placeholder';
+import { CartButton } from '@/components/cart/CartButton';
 import { siteConfig } from '@/config/site';
 
 export function TopBar() {
@@ -29,7 +30,7 @@ export function TopBar() {
         {/* Right zone: Account, Cart, Currency */}
         <div className="flex items-center gap-0.5 justify-end">
           <IconButton aria-label="Account" icon={<User size={18} strokeWidth={1.5} />} />
-          <IconButton aria-label="Shopping bag" icon={<ShoppingBag size={18} strokeWidth={1.5} />} />
+          <CartButton />
           <span className="flex items-center gap-0.5 text-nav uppercase tracking-nav ml-2 select-none">
             {siteConfig.currency.code}
             <ChevronDown size={13} strokeWidth={1.5} aria-hidden="true" />

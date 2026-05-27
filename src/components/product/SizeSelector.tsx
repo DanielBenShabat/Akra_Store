@@ -1,15 +1,14 @@
 'use client';
 
-import { useState } from 'react';
 import { cn } from '@/lib/utils';
 
 interface SizeSelectorProps {
   sizes: string[];
+  selected: string | null;
+  onSelect: (size: string) => void;
 }
 
-export function SizeSelector({ sizes }: SizeSelectorProps) {
-  const [selected, setSelected] = useState<string | null>(null);
-
+export function SizeSelector({ sizes, selected, onSelect }: SizeSelectorProps) {
   return (
     <div className="flex flex-col gap-3">
       <p className="text-badge uppercase tracking-nav font-medium">Size</p>
@@ -18,7 +17,8 @@ export function SizeSelector({ sizes }: SizeSelectorProps) {
           <button
             key={size}
             type="button"
-            onClick={() => setSelected(size)}
+            onClick={() => onSelect(size)}
+            aria-pressed={selected === size}
             className={cn(
               'px-4 py-2 text-nav font-medium border transition-colors',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground',

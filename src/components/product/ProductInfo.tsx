@@ -1,3 +1,6 @@
+'use client';
+
+import { useState } from 'react';
 import type { Product } from '@/types';
 import { formatPrice } from '@/lib/utils';
 import { siteConfig } from '@/config/site';
@@ -9,6 +12,8 @@ interface ProductInfoProps {
 }
 
 export function ProductInfo({ product }: ProductInfoProps) {
+  const [selectedSize, setSelectedSize] = useState<string | null>(null);
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
@@ -27,10 +32,14 @@ export function ProductInfo({ product }: ProductInfoProps) {
       )}
 
       {product.sizes && product.sizes.length > 0 && (
-        <SizeSelector sizes={product.sizes} />
+        <SizeSelector
+          sizes={product.sizes}
+          selected={selectedSize}
+          onSelect={setSelectedSize}
+        />
       )}
 
-      <AddToCartButton productName={product.name} />
+      <AddToCartButton product={product} selectedSize={selectedSize} />
     </div>
   );
 }
