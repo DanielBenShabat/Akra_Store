@@ -53,3 +53,8 @@ alter table orders add column if not exists currency          text not null defa
 alter table orders add column if not exists status            text not null default 'pending';
 alter table orders add column if not exists payment_provider  text;
 alter table orders add column if not exists payment_reference text;
+
+create or replace function decrement_product_stock(p_id uuid, qty integer)
+returns void language sql as $$
+  update products set stock = greatest(stock - qty, 0) where id = p_id;
+$$;

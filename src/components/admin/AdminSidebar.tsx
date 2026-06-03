@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutGrid, Store } from 'lucide-react';
+import { LayoutGrid, Store, ClipboardList } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { href: '/admin/inventory', label: 'Inventory', icon: LayoutGrid },
+  { href: '/admin/orders', label: 'Orders', icon: ClipboardList },
 ];
 
 export default function AdminSidebar() {

@@ -42,7 +42,7 @@ export async function processPayment(input: ProcessPaymentInput): Promise<Proces
   const productIds = [...new Set(lines.data.map((l) => l.productId))];
   const { data: products, error: productsError } = await supabase
     .from('products')
-    .select('id, name, price')
+    .select('id, name, price, stock')
     .in('id', productIds);
   if (productsError) return { error: productsError.message };
 
@@ -53,6 +53,7 @@ export async function processPayment(input: ProcessPaymentInput): Promise<Proces
   for (const line of lines.data) {
     const product = byId.get(line.productId);
     if (!product) return { error: 'A product in your cart is no longer available' };
+    if (product.stock < line.quantity) return { error: `${product.name} is out of stock` };
     subtotal += product.price * line.quantity;
     orderItems.push({
       product_id: product.id,
@@ -103,6 +104,13 @@ export async function processPayment(input: ProcessPaymentInput): Promise<Proces
       .from('orders')
       .update({ status: 'paid', payment_reference: payment.reference })
       .eq('id', order.id);
+
+    for (const item of orderItems) {
+      await supabase.rpc('decrement_product_stock', {
+        p_id: item.product_id,
+        qty: item.quantity,
+      });
+    }
     return { orderId: order.id };
   }
 

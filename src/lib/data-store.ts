@@ -97,3 +97,22 @@ export async function getOrderById(id: string): Promise<OrderSummary | null> {
   if (error) throw new Error(error.message);
   return data ? (data as OrderSummary) : null;
 }
+
+export interface OrderRow {
+  id: string;
+  first_name: string;
+  last_name: string;
+  total: number;
+  currency: string;
+  status: string;
+  created_at: string;
+}
+
+export async function getOrders(): Promise<OrderRow[]> {
+  const { data, error } = await supabase
+    .from('orders')
+    .select('id, first_name, last_name, total, currency, status, created_at')
+    .order('created_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as OrderRow[];
+}
