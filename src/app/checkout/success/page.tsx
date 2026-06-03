@@ -1,8 +1,19 @@
 import Link from 'next/link';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
+import { getOrderById } from '@/lib/data-store';
+import { formatPrice } from '@/lib/utils';
+import { siteConfig } from '@/config/site';
 
-export default function CheckoutSuccessPage() {
+interface Props {
+  searchParams: Promise<{ order?: string }>;
+}
+
+export default async function CheckoutSuccessPage({ searchParams }: Props) {
+  const { order: orderId } = await searchParams;
+  const order = orderId ? await getOrderById(orderId) : null;
+  const paid = order?.status === 'paid';
+
   return (
     <>
       <Header />
@@ -11,15 +22,25 @@ export default function CheckoutSuccessPage() {
           <div className="w-16 h-px bg-foreground" aria-hidden="true" />
 
           <h1 className="text-section-title font-bold uppercase tracking-section">
-            Order Received
+            {paid ? 'Payment Confirmed' : 'Order Received'}
           </h1>
 
           <p className="text-product-title text-muted-foreground leading-relaxed">
-            Thank you for your order. We have received your request and a member of our team
-            will be in touch shortly to confirm the details.
+            Thank you for your order. A confirmation has been sent to your email.
           </p>
 
-          <div className="w-16 h-px bg-border" aria-hidden="true" />
+          {order && (
+            <dl className="w-full flex flex-col divide-y divide-border border-t border-b border-border">
+              <div className="flex items-center justify-between py-3">
+                <dt className="text-nav uppercase tracking-nav text-muted-foreground">Order</dt>
+                <dd className="text-nav font-medium">#{order.id.slice(0, 8)}</dd>
+              </div>
+              <div className="flex items-center justify-between py-3">
+                <dt className="text-nav uppercase tracking-nav text-muted-foreground">Total Paid</dt>
+                <dd className="text-nav font-bold">{formatPrice(order.total, siteConfig.currency.symbol)}</dd>
+              </div>
+            </dl>
+          )}
 
           <Link
             href="/"

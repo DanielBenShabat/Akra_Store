@@ -12,8 +12,9 @@ import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { useCartStore } from '@/lib/cart-store';
 import { formatPrice } from '@/lib/utils';
+import { calculateTotals } from '@/lib/pricing';
 import { siteConfig } from '@/config/site';
-import { placeOrderAction } from './actions';
+import { processPayment } from './actions';
 
 const checkoutSchema = z.object({
   firstName: z.string().min(1, 'Required'),
@@ -22,6 +23,10 @@ const checkoutSchema = z.object({
   phone:     z.string().min(9, 'Enter a valid phone number'),
   address:   z.string().min(5, 'Enter your full address'),
   city:      z.string().min(1, 'Required'),
+  cardName:   z.string().min(1, 'Required'),
+  cardNumber: z.string().regex(/^(\d{4}\s?){3}\d{4}$/, 'Enter a 16-digit card number'),
+  expiry:     z.string().regex(/^(0[1-9]|1[0-2])\/\d{2}$/, 'MM/YY'),
+  cvc:        z.string().regex(/^\d{3,4}$/, '3-4 digits'),
 });
 
 type CheckoutFormValues = z.infer<typeof checkoutSchema>;
@@ -63,14 +68,34 @@ export default function CheckoutPage() {
     formState: { errors, isSubmitting },
   } = useForm<CheckoutFormValues>({ resolver: zodResolver(checkoutSchema) });
 
+  const totals = calculateTotals(subtotal());
+  const symbol = siteConfig.currency.symbol;
+
   async function onSubmit(data: CheckoutFormValues) {
-    const result = await placeOrderAction(data, items);
+    // Card fields are collected for realism only and are never sent to the server.
+    const result = await processPayment({
+      shipping: {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        phone: data.phone,
+        address: data.address,
+        city: data.city,
+      },
+      items: items.map((i) => ({ productId: i.productId, size: i.size, quantity: i.quantity })),
+    });
+
     if (result.error) {
       toast.error(result.error);
       return;
     }
+    if (result.redirectUrl) {
+      window.location.assign(result.redirectUrl);
+      return;
+    }
+
     clearCart();
-    router.push('/checkout/success');
+    router.push(`/checkout/success?order=${result.orderId}`);
   }
 
   if (items.length === 0) return null;
@@ -80,12 +105,9 @@ export default function CheckoutPage() {
       <Header />
       <main className="flex-1">
         <div className="site-container py-10 lg:py-16">
-          <h1 className="text-section-title font-bold uppercase tracking-section mb-10">
-            Checkout
-          </h1>
+          <h1 className="text-section-title font-bold uppercase tracking-section mb-10">Checkout</h1>
 
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-12 lg:gap-16">
-            {/* ── Shipping form ── */}
             <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
               <p className="text-nav font-bold uppercase tracking-nav border-b border-border pb-3">
                 Shipping Details
@@ -117,16 +139,40 @@ export default function CheckoutPage() {
                 <input className={inputClass} placeholder="Tel Aviv" {...register('city')} />
               </Field>
 
+              <p className="text-nav font-bold uppercase tracking-nav border-b border-border pb-3 mt-4">
+                Payment
+              </p>
+
+              <Field label="Name on Card" error={errors.cardName?.message}>
+                <input className={inputClass} placeholder="Daniel Cohen" {...register('cardName')} />
+              </Field>
+
+              <Field label="Card Number" error={errors.cardNumber?.message}>
+                <input className={inputClass} inputMode="numeric" placeholder="4242 4242 4242 4242" {...register('cardNumber')} />
+              </Field>
+
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Expiry" error={errors.expiry?.message}>
+                  <input className={inputClass} placeholder="MM/YY" {...register('expiry')} />
+                </Field>
+                <Field label="CVC" error={errors.cvc?.message}>
+                  <input className={inputClass} inputMode="numeric" placeholder="123" {...register('cvc')} />
+                </Field>
+              </div>
+
               <button
                 type="submit"
                 disabled={isSubmitting}
                 className="mt-4 w-full bg-foreground text-on-dark text-nav font-medium uppercase tracking-nav py-4 hover:bg-foreground/90 transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2"
               >
-                {isSubmitting ? 'Placing Order…' : 'Complete Order'}
+                {isSubmitting ? 'Processing Payment…' : `Pay Now · ${formatPrice(totals.total, symbol)}`}
               </button>
+
+              <p className="text-badge text-muted-foreground">
+                This is a demo checkout. No real payment is processed and no card details are stored.
+              </p>
             </form>
 
-            {/* ── Order summary ── */}
             <div className="flex flex-col gap-6">
               <p className="text-nav font-bold uppercase tracking-nav border-b border-border pb-3">
                 Order Summary
@@ -137,13 +183,7 @@ export default function CheckoutPage() {
                   <li key={`${item.productId}-${item.size}`} className="flex gap-4 py-4">
                     <div className="relative w-16 h-16 shrink-0 bg-border overflow-hidden">
                       {item.imageUrl ? (
-                        <Image
-                          src={item.imageUrl}
-                          alt={item.name}
-                          fill
-                          className="object-cover"
-                          sizes="64px"
-                        />
+                        <Image src={item.imageUrl} alt={item.name} fill className="object-cover" sizes="64px" />
                       ) : (
                         <div className="w-full h-full bg-border" aria-hidden="true" />
                       )}
@@ -155,23 +195,29 @@ export default function CheckoutPage() {
                       </p>
                     </div>
                     <p className="text-nav font-bold shrink-0">
-                      {formatPrice(item.price * item.quantity, siteConfig.currency.symbol)}
+                      {formatPrice(item.price * item.quantity, symbol)}
                     </p>
                   </li>
                 ))}
               </ul>
 
-              <div className="border-t border-border pt-4 flex items-center justify-between">
-                <span className="text-nav text-muted-foreground uppercase tracking-nav">Subtotal</span>
-                <span className="text-price font-bold">
-                  {formatPrice(subtotal(), siteConfig.currency.symbol)}
-                </span>
+              <div className="border-t border-border pt-4 flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-nav text-muted-foreground uppercase tracking-nav">Subtotal</span>
+                  <span className="text-nav">{formatPrice(totals.subtotal, symbol)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-nav text-muted-foreground uppercase tracking-nav">Shipping</span>
+                  <span className="text-nav">
+                    {totals.shipping === 0 ? 'Free' : formatPrice(totals.shipping, symbol)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between border-t border-border pt-2 mt-1">
+                  <span className="text-nav font-bold uppercase tracking-nav">Total</span>
+                  <span className="text-price font-bold">{formatPrice(totals.total, symbol)}</span>
+                </div>
+                <p className="text-badge text-muted-foreground mt-1">VAT included.</p>
               </div>
-
-              <p className="text-badge text-muted-foreground leading-relaxed">
-                Payment will be arranged upon order confirmation. A member of our team will be
-                in touch shortly.
-              </p>
             </div>
           </div>
 

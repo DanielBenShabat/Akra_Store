@@ -80,3 +80,20 @@ export async function deleteProduct(id: string): Promise<void> {
   const { error } = await supabase.from('products').delete().eq('id', id);
   if (error) throw new Error(error.message);
 }
+
+export interface OrderSummary {
+  id: string;
+  total: number;
+  currency: string;
+  status: string;
+}
+
+export async function getOrderById(id: string): Promise<OrderSummary | null> {
+  const { data, error } = await supabase
+    .from('orders')
+    .select('id, total, currency, status')
+    .eq('id', id)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data ? (data as OrderSummary) : null;
+}
