@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Montserrat } from 'next/font/google';
 import { CartHydration } from '@/components/cart/CartHydration';
 import { Toaster } from '@/components/admin-ui/sonner';
+import { siteConfig } from '@/config/site';
 import './globals.css';
 
 const montserrat = Montserrat({
@@ -11,9 +12,34 @@ const montserrat = Montserrat({
   display: 'swap',
 });
 
+const description =
+  'akra is a minimalist streetwear label — heavyweight cotton, considered cuts, and quiet detailing.';
+
 export const metadata: Metadata = {
-  title: 'akra',
-  description: 'Minimalist streetwear.',
+  metadataBase: new URL(siteConfig.url),
+  title: {
+    default: 'akra — Minimalist Streetwear',
+    template: '%s · akra',
+  },
+  description,
+  applicationName: 'akra',
+  openGraph: {
+    type: 'website',
+    siteName: 'akra',
+    title: 'akra — Minimalist Streetwear',
+    description,
+    url: siteConfig.url,
+    locale: 'en_US',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'akra — Minimalist Streetwear',
+    description,
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({

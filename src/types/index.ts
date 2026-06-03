@@ -18,6 +18,7 @@ export interface NavItem {
 
 export interface SiteConfig {
   brandName: string;
+  url: string;
   nav: NavItem[];
   featuredCollectionTitle: string;
   footer: {

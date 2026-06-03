@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { FloatingButtons } from '@/components/layout/FloatingButtons';
@@ -5,6 +6,10 @@ import { HeroSection } from '@/components/home/HeroSection';
 import { FeaturedCollection } from '@/components/home/FeaturedCollection';
 import { CategoryCarousel } from '@/components/home/CategoryCarousel';
 import { getProducts } from '@/lib/data-store';
+
+export const metadata: Metadata = {
+  title: { absolute: 'akra — Minimalist Streetwear' },
+};
 
 export default async function HomePage() {
   const all = await getProducts();
