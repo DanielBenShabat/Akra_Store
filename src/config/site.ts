@@ -28,4 +28,9 @@ export const siteConfig: SiteConfig = {
     code: 'ILS',
     symbol: 'NIS',
   },
+
+  shipping: {
+    flatFee: 29.9,
+    freeThreshold: 400,
+  },
 };

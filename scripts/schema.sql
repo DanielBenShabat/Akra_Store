@@ -16,15 +16,21 @@ create table if not exists products (
 );
 
 create table if not exists orders (
-  id          uuid primary key default gen_random_uuid(),
-  first_name  text not null,
-  last_name   text not null,
-  email       text not null,
-  phone       text not null,
-  address     text not null,
-  city        text not null,
-  subtotal    numeric(10, 2) not null,
-  created_at  timestamptz not null default now()
+  id                 uuid primary key default gen_random_uuid(),
+  first_name         text not null,
+  last_name          text not null,
+  email              text not null,
+  phone              text not null,
+  address            text not null,
+  city               text not null,
+  subtotal           numeric(10, 2) not null,
+  shipping_cost      numeric(10, 2) not null default 0,
+  total              numeric(10, 2) not null default 0,
+  currency           text not null default 'ILS',
+  status             text not null default 'pending' check (status in ('pending', 'paid', 'failed')),
+  payment_provider   text,
+  payment_reference  text,
+  created_at         timestamptz not null default now()
 );
 
 create table if not exists order_items (
@@ -39,3 +45,11 @@ create table if not exists order_items (
 );
 
 create index if not exists order_items_order_id_idx on order_items(order_id);
+
+-- Migrations for databases created before payment columns existed (safe to re-run).
+alter table orders add column if not exists shipping_cost     numeric(10, 2) not null default 0;
+alter table orders add column if not exists total             numeric(10, 2) not null default 0;
+alter table orders add column if not exists currency          text not null default 'ILS';
+alter table orders add column if not exists status            text not null default 'pending';
+alter table orders add column if not exists payment_provider  text;
+alter table orders add column if not exists payment_reference text;

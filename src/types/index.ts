@@ -31,4 +31,8 @@ export interface SiteConfig {
     code: string;
     symbol: string;
   };
+  shipping: {
+    flatFee: number;
+    freeThreshold: number;
+  };
 }
