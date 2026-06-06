@@ -16,7 +16,8 @@ export function TopBar() {
             type="button"
             aria-label="Open navigation menu"
             onClick={() => setNavOpen(true)}
-            className="p-2 -ml-2 text-foreground hover:text-muted-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground rounded-sm"
+            className="p-3 -ml-3 cursor-pointer touch-action-manipulation text-foreground hover:text-muted-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground rounded-sm"
+            style={{ touchAction: 'manipulation' }}
           >
             <Menu size={20} strokeWidth={1.5} />
           </button>

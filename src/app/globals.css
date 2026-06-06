@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
 /* ─── Layout tokens — used via var() in components ─────────────────────── */
 :root {

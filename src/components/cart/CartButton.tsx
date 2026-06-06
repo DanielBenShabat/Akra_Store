@@ -15,7 +15,8 @@ export function CartButton() {
         type="button"
         aria-label="Shopping bag"
         onClick={() => setOpen(true)}
-        className="relative inline-flex items-center justify-center p-2 shrink-0 text-foreground transition-colors hover:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground rounded-sm"
+        className="relative inline-flex items-center justify-center p-3 shrink-0 cursor-pointer text-foreground transition-colors hover:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground rounded-sm"
+        style={{ touchAction: 'manipulation' }}
       >
         <ShoppingBag size={18} strokeWidth={1.5} />
         {itemCount() > 0 && (
