@@ -19,8 +19,7 @@ export default function TermsPage() {
 
       <h2 className="text-product-title font-bold mt-4">2. Orders and Pricing</h2>
       <p className="text-nav text-muted-foreground leading-relaxed">
-        All prices are listed in {siteConfig.currency.code} and include VAT where applicable. We
-        reserve the right to correct pricing errors and to decline or cancel orders.
+        All prices are listed in {siteConfig.currency.code} and include VAT where applicable.
       </p>
 
       <h2 className="text-product-title font-bold mt-4">3. Payment</h2>
@@ -36,11 +35,6 @@ export default function TermsPage() {
       <h2 className="text-product-title font-bold mt-4">5. Governing Law</h2>
       <p className="text-nav text-muted-foreground leading-relaxed">
         These terms are governed by the laws of the State of Israel.
-      </p>
-
-      <h2 className="text-product-title font-bold mt-4">6. Contact</h2>
-      <p className="text-nav text-muted-foreground leading-relaxed">
-        Questions about these terms can be sent through our contact page.
       </p>
     </article>
   );

@@ -1,43 +1,37 @@
-import { Search, User, ChevronDown } from 'lucide-react';
-import { IconButton } from '@/components/ui/IconButton';
-import { Placeholder } from '@/components/ui/Placeholder';
+'use client';
+
+import { useState } from 'react';
+import { Menu } from 'lucide-react';
 import { CartButton } from '@/components/cart/CartButton';
-import { siteConfig } from '@/config/site';
+import { NavSheet } from './NavSheet';
 
 export function TopBar() {
+  const [navOpen, setNavOpen] = useState(false);
+
   return (
-    <div className="h-topbar border-b border-border">
-      <div className="site-container h-full grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+    <>
+      <div className="h-topbar border-b border-border">
+        <div className="px-4 h-full grid grid-cols-[auto_1fr_auto] items-center gap-2">
+          <button
+            type="button"
+            aria-label="Open navigation menu"
+            onClick={() => setNavOpen(true)}
+            className="p-2 -ml-2 text-foreground hover:text-muted-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground rounded-sm"
+          >
+            <Menu size={20} strokeWidth={1.5} />
+          </button>
 
-        {/* Left zone: Search */}
-        <div className="flex items-center gap-1.5">
-          <IconButton aria-label="Search" icon={<Search size={18} strokeWidth={1.5} />} className="-ml-2" />
-          <span className="text-nav text-muted-foreground uppercase tracking-nav hidden sm:inline select-none">
-            Search
-          </span>
-        </div>
-
-        {/* Center zone: Logo mark + brand name */}
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 shrink-0">
-            <Placeholder aspectRatio="1/1" variant="light" />
+          <div className="flex justify-center">
+            <span className="text-nav font-bold uppercase tracking-nav whitespace-nowrap select-none">
+              Akra The Duck
+            </span>
           </div>
-          <span className="text-nav font-bold uppercase tracking-nav whitespace-nowrap">
-            {siteConfig.brandName}
-          </span>
-        </div>
 
-        {/* Right zone: Account, Cart, Currency */}
-        <div className="flex items-center gap-0.5 justify-end">
-          <IconButton aria-label="Account" icon={<User size={18} strokeWidth={1.5} />} />
           <CartButton />
-          <span className="flex items-center gap-0.5 text-nav uppercase tracking-nav ml-2 select-none">
-            {siteConfig.currency.code}
-            <ChevronDown size={13} strokeWidth={1.5} aria-hidden="true" />
-          </span>
         </div>
-
       </div>
-    </div>
+
+      <NavSheet open={navOpen} onOpenChange={setNavOpen} />
+    </>
   );
 }

@@ -18,16 +18,9 @@ export default function AccessibilityPage() {
         with the Israeli accessibility regulations and the WCAG 2.1 AA guidelines.
       </p>
 
-      <h2 className="text-product-title font-bold mt-4">Ongoing Effort</h2>
-      <p className="text-nav text-muted-foreground leading-relaxed">
-        Accessibility is an ongoing effort and we continue to improve the experience across the
-        site.
-      </p>
-
       <h2 className="text-product-title font-bold mt-4">Reporting Issues</h2>
       <p className="text-nav text-muted-foreground leading-relaxed">
-        If you encounter an accessibility barrier, please let us know through the contact page so we
-        can address it.
+        If you encounter an accessibility barrier, please let us know through the contact page.
       </p>
     </article>
   );

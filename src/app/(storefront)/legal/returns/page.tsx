@@ -15,7 +15,7 @@ export default function ReturnsPage() {
       <h2 className="text-product-title font-bold mt-4">1. Cancellation Rights</h2>
       <p className="text-nav text-muted-foreground leading-relaxed">
         In accordance with the Israeli Consumer Protection Law, you may cancel a purchase within the
-        statutory period after receiving the item, subject to the conditions set out in the law.
+        statutory period after receiving the item.
       </p>
 
       <h2 className="text-product-title font-bold mt-4">2. Condition of Items</h2>
@@ -25,14 +25,12 @@ export default function ReturnsPage() {
 
       <h2 className="text-product-title font-bold mt-4">3. How to Return</h2>
       <p className="text-nav text-muted-foreground leading-relaxed">
-        To start a return or cancellation, contact us through the contact page with your order
-        number. We will provide return instructions.
+        To start a return, contact us through the contact page with your order number.
       </p>
 
       <h2 className="text-product-title font-bold mt-4">4. Refunds</h2>
       <p className="text-nav text-muted-foreground leading-relaxed">
-        Approved refunds are issued to the original payment method. Shipping fees may be
-        non-refundable as permitted by law.
+        Approved refunds are issued to the original payment method.
       </p>
     </article>
   );

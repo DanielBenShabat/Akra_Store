@@ -39,8 +39,8 @@ export default async function ProductPage({ params }: Props) {
     <>
       <Header />
       <main className="flex-1">
-        <div className="site-container py-10 lg:py-16">
-          <div className="grid grid-cols-1 lg:grid-cols-[55fr_45fr] gap-8 lg:gap-16">
+        <div className="site-container py-10">
+          <div className="flex flex-col gap-8">
             <ProductGallery product={product} />
             <ProductInfo product={product} />
           </div>

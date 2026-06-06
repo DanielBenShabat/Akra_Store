@@ -47,7 +47,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={montserrat.variable}>
-      <body className="min-h-screen flex flex-col bg-background text-foreground font-sans antialiased">
+      <body className="min-h-screen flex flex-col bg-[#111111] text-foreground font-sans antialiased">
         <CartHydration />
         {children}
         <Toaster />

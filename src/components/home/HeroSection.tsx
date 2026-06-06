@@ -1,17 +1,17 @@
-import { Placeholder } from '@/components/ui/Placeholder';
-import { siteConfig } from '@/config/site';
-
 export function HeroSection() {
   return (
     <section
       aria-labelledby="hero-heading"
-      className="relative w-full bg-surface-dark flex items-center justify-center min-h-[85vh]"
+      className="relative w-full bg-surface-dark flex items-end justify-start h-[80vh]"
     >
-      <h1 id="hero-heading" className="sr-only">
-        {siteConfig.brandName}
-      </h1>
-      <div className="w-48 sm:w-60 md:w-80 max-w-sm">
-        <Placeholder aspectRatio="1/1" label="Animated logo" variant="light" />
+      <h1 id="hero-heading" className="sr-only">Akra The Duck</h1>
+      <div className="p-8 pb-10">
+        <p className="text-on-dark text-5xl font-bold uppercase leading-none tracking-tight">
+          Akra
+        </p>
+        <p className="text-on-dark/50 text-sm uppercase tracking-[0.35em] mt-2">
+          The Duck
+        </p>
       </div>
     </section>
   );

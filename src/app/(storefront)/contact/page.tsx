@@ -10,7 +10,7 @@ export default function ContactPage() {
     <>
       <Header />
       <main className="flex-1">
-        <div className="site-container py-10 lg:py-16 max-w-3xl flex flex-col gap-5">
+        <div className="site-container py-10 flex flex-col gap-5">
           <h1 className="text-section-title font-bold uppercase tracking-section">Contact</h1>
           <p className="text-nav text-muted-foreground leading-relaxed">
             Questions about an order, a product, or a return? Reach us through the channels below.
@@ -39,10 +39,6 @@ export default function ContactPage() {
               <dd className="text-nav font-medium">To be provided</dd>
             </div>
           </dl>
-
-          <p className="text-badge text-muted-foreground">
-            Placeholder business details. Final contact information will be provided before launch.
-          </p>
         </div>
       </main>
       <Footer />

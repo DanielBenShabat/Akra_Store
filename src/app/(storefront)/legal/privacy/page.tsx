@@ -12,8 +12,7 @@ export default function PrivacyPage() {
 
       <h2 className="text-product-title font-bold mt-4">1. Information We Collect</h2>
       <p className="text-nav text-muted-foreground leading-relaxed">
-        When you place an order we collect your name, email, phone number, and shipping address,
-        along with the details of the items purchased.
+        When you place an order we collect your name, email, phone number, and shipping address.
       </p>
 
       <h2 className="text-product-title font-bold mt-4">2. How We Use It</h2>
@@ -26,13 +25,7 @@ export default function PrivacyPage() {
         Card details are handled by our payment processor and are never stored on our servers.
       </p>
 
-      <h2 className="text-product-title font-bold mt-4">4. Data Storage</h2>
-      <p className="text-nav text-muted-foreground leading-relaxed">
-        Order data is stored securely with our hosting and database providers and retained only as
-        long as needed for business and legal purposes.
-      </p>
-
-      <h2 className="text-product-title font-bold mt-4">5. Your Rights</h2>
+      <h2 className="text-product-title font-bold mt-4">4. Your Rights</h2>
       <p className="text-nav text-muted-foreground leading-relaxed">
         You may request access to or deletion of your personal data through our contact page.
       </p>
