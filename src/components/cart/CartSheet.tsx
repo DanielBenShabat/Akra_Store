@@ -25,7 +25,7 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
         <Dialog.Content
           aria-describedby={undefined}
-          className="fixed right-0 top-0 z-50 h-full w-full max-w-md bg-background shadow-xl flex flex-col data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right duration-300"
+          className="fixed top-0 z-50 h-full w-full max-w-[430px] bg-background shadow-xl flex flex-col data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right duration-300 [right:max(0px,calc(50vw_-_215px))]"
         >
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-5 border-b border-border">
