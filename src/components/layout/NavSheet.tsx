@@ -22,10 +22,10 @@ export function NavSheet({ open, onOpenChange }: NavSheetProps) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40" />
         <Dialog.Content
           aria-describedby={undefined}
-          className="fixed top-0 z-50 h-full w-72 bg-background shadow-xl flex flex-col data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left duration-300 [left:max(0px,calc(50vw_-_215px))]"
+          className="fixed top-0 z-50 h-screen w-72 bg-background shadow-xl flex flex-col [left:max(0px,calc(50vw_-_215px))]"
         >
           <div className="flex items-center justify-between px-6 py-5 border-b border-border">
             <Dialog.Title className="text-nav font-bold uppercase tracking-nav">
