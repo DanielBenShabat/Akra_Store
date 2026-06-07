@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Pencil, Trash2, Plus } from 'lucide-react';
-import type { Product, ProductCategory } from '@/types';
+import type { Product, Category } from '@/types';
 import { Button } from '@/components/admin-ui/button';
 import { Badge } from '@/components/admin-ui/badge';
 import {
@@ -19,14 +19,6 @@ import { createProductAction, updateProductAction, deleteProductAction } from '.
 import ProductFormDialog from './ProductFormDialog';
 import DeleteConfirmDialog from './DeleteConfirmDialog';
 
-const CATEGORY_COLORS: Record<ProductCategory, string> = {
-  tees: 'bg-blue-100 text-blue-700 border-blue-200',
-  bottoms: 'bg-purple-100 text-purple-700 border-purple-200',
-  accessories: 'bg-amber-100 text-amber-700 border-amber-200',
-  socks: 'bg-green-100 text-green-700 border-green-200',
-  featured: 'bg-rose-100 text-rose-700 border-rose-200',
-};
-
 function StockBadge({ stock }: { stock: number }) {
   if (stock < 3)
     return <Badge className="bg-red-100 text-red-700 border-red-200 hover:bg-red-100">{stock}</Badge>;
@@ -37,17 +29,20 @@ function StockBadge({ stock }: { stock: number }) {
 
 interface Props {
   products: Product[];
+  categories: Category[];
 }
 
 type ProductFormValues = Omit<Product, 'id'>;
 
-export default function InventoryClient({ products }: Props) {
+export default function InventoryClient({ products, categories }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [formOpen, setFormOpen] = useState(false);
   const [editProduct, setEditProduct] = useState<Product | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteProduct, setDeleteProduct] = useState<Product | null>(null);
+
+  const categoryMap = new Map(categories.map((c) => [c.id, c]));
 
   function openAdd() {
     setEditProduct(null);
@@ -124,57 +119,61 @@ export default function InventoryClient({ products }: Props) {
                 </TableCell>
               </TableRow>
             )}
-            {products.map((product) => (
-              <TableRow key={product.id}>
-                <TableCell className="font-medium">{product.name}</TableCell>
-                <TableCell>
-                  <Badge
-                    variant="outline"
-                    className={CATEGORY_COLORS[product.category]}
-                  >
-                    {product.category}
-                  </Badge>
-                </TableCell>
-                <TableCell>₪{product.price.toFixed(2)}</TableCell>
-                <TableCell>
-                  <StockBadge stock={product.stock} />
-                </TableCell>
-                <TableCell>
-                  {product.imageUrl ? (
-                    <img
-                      src={product.imageUrl}
-                      alt={product.name}
-                      className="h-8 w-8 rounded object-cover"
-                    />
-                  ) : (
-                    <span className="text-muted-foreground text-xs">—</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => openEdit(product)}
-                      disabled={isPending}
-                      aria-label={`Edit ${product.name}`}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => openDelete(product)}
-                      disabled={isPending}
-                      aria-label={`Delete ${product.name}`}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
+            {products.map((product) => {
+              const cat = product.categoryId ? categoryMap.get(product.categoryId) : undefined;
+              return (
+                <TableRow key={product.id}>
+                  <TableCell className="font-medium">{product.name}</TableCell>
+                  <TableCell>
+                    {cat ? (
+                      <Badge variant="outline" className="text-muted-foreground capitalize">
+                        {cat.name}
+                      </Badge>
+                    ) : (
+                      <span className="text-muted-foreground text-xs">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell>₪{product.price.toFixed(2)}</TableCell>
+                  <TableCell>
+                    <StockBadge stock={product.stock} />
+                  </TableCell>
+                  <TableCell>
+                    {product.imageUrl ? (
+                      <img
+                        src={product.imageUrl}
+                        alt={product.name}
+                        className="h-8 w-8 rounded object-cover"
+                      />
+                    ) : (
+                      <span className="text-muted-foreground text-xs">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => openEdit(product)}
+                        disabled={isPending}
+                        aria-label={`Edit ${product.name}`}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => openDelete(product)}
+                        disabled={isPending}
+                        aria-label={`Delete ${product.name}`}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </div>
@@ -185,6 +184,7 @@ export default function InventoryClient({ products }: Props) {
         product={editProduct}
         onSubmit={handleFormSubmit}
         pending={isPending}
+        categories={categories}
       />
 
       <DeleteConfirmDialog

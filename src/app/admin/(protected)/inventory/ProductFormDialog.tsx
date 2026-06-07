@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
 import { ImageIcon, Loader2, X } from 'lucide-react';
-import type { Product, ProductCategory } from '@/types';
+import type { Product, Category } from '@/types';
 import {
   Dialog,
   DialogContent,
@@ -40,12 +40,10 @@ const TEE_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 const BOTTOM_SIZES = ['28', '30', '32', '34', '36'];
 const ALL_SIZES = [...TEE_SIZES, ...BOTTOM_SIZES];
 
-const CATEGORIES: ProductCategory[] = ['tees', 'bottoms', 'accessories', 'socks', 'featured'];
-
 const productSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   price: z.number().positive('Must be positive'),
-  category: z.enum(['tees', 'bottoms', 'accessories', 'socks', 'featured'] as [ProductCategory, ...ProductCategory[]]),
+  categoryId: z.string().min(1, 'Select a category'),
   stock: z.number().int().min(0, 'Cannot be negative'),
   description: z.string().optional(),
   sizes: z.array(z.string()).optional(),
@@ -60,9 +58,17 @@ interface Props {
   product?: Product | null;
   onSubmit: (data: ProductFormValues) => void;
   pending: boolean;
+  categories: Category[];
 }
 
-export default function ProductFormDialog({ open, onOpenChange, product, onSubmit, pending }: Props) {
+export default function ProductFormDialog({
+  open,
+  onOpenChange,
+  product,
+  onSubmit,
+  pending,
+  categories,
+}: Props) {
   const [isUploading, setIsUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -72,7 +78,7 @@ export default function ProductFormDialog({ open, onOpenChange, product, onSubmi
     defaultValues: {
       name: '',
       price: 0,
-      category: 'tees',
+      categoryId: '',
       stock: 0,
       description: '',
       sizes: [],
@@ -87,19 +93,27 @@ export default function ProductFormDialog({ open, onOpenChange, product, onSubmi
           ? {
               name: product.name,
               price: product.price,
-              category: product.category,
+              categoryId: product.categoryId ?? '',
               stock: product.stock,
               description: product.description ?? '',
               sizes: product.sizes ?? [],
               imageUrl: product.imageUrl ?? '',
             }
-          : { name: '', price: 0, category: 'tees', stock: 0, description: '', sizes: [], imageUrl: '' }
+          : {
+              name: '',
+              price: 0,
+              categoryId: categories[0]?.id ?? '',
+              stock: 0,
+              description: '',
+              sizes: [],
+              imageUrl: '',
+            }
       );
       setPreviewUrl(product?.imageUrl ?? null);
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
-  }, [open, product, form]);
+  }, [open, product, form, categories]);
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -211,7 +225,7 @@ export default function ProductFormDialog({ open, onOpenChange, product, onSubmi
 
             <FormField
               control={form.control}
-              name="category"
+              name="categoryId"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Category</FormLabel>
@@ -222,9 +236,9 @@ export default function ProductFormDialog({ open, onOpenChange, product, onSubmi
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {CATEGORIES.map((cat) => (
-                        <SelectItem key={cat} value={cat}>
-                          {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                      {categories.map((cat) => (
+                        <SelectItem key={cat.id} value={cat.id}>
+                          {cat.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -279,7 +293,6 @@ export default function ProductFormDialog({ open, onOpenChange, product, onSubmi
               )}
             />
 
-            {/* Image upload */}
             <FormItem>
               <FormLabel>Product Image</FormLabel>
               <div className="space-y-3">

@@ -1,10 +1,15 @@
-export type ProductCategory = 'tees' | 'bottoms' | 'accessories' | 'socks' | 'featured';
+export interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  displayOrder: number;
+}
 
 export interface Product {
   id: string;
   name: string;
   price: number;
-  category: ProductCategory;
+  categoryId: string | null;
   stock: number;
   description?: string;
   sizes?: string[];

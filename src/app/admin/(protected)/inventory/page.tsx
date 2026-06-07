@@ -1,10 +1,10 @@
-import { getProducts } from '@/lib/data-store';
+import { getProducts, getCategories } from '@/lib/data-store';
 import InventoryClient from './InventoryClient';
 
 export const dynamic = 'force-dynamic';
 
 export default async function InventoryPage() {
-  const products = await getProducts();
+  const [products, categories] = await Promise.all([getProducts(), getCategories()]);
 
   return (
     <div className="space-y-4">
@@ -14,7 +14,7 @@ export default async function InventoryPage() {
           Manage your products and stock levels.
         </p>
       </div>
-      <InventoryClient products={products} />
+      <InventoryClient products={products} categories={categories} />
     </div>
   );
 }
