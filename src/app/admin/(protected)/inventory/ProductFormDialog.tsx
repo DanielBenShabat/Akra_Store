@@ -293,8 +293,8 @@ export default function ProductFormDialog({
               )}
             />
 
-            <FormItem>
-              <FormLabel>Product Image</FormLabel>
+            <div className="space-y-2">
+              <Label>Product Image</Label>
               <div className="space-y-3">
                 {previewUrl && (
                   <div className="relative w-24 h-24 rounded-md overflow-hidden border border-border">
@@ -344,7 +344,7 @@ export default function ProductFormDialog({
                   />
                 </label>
               </div>
-            </FormItem>
+            </div>
 
             <DialogFooter className="pt-2">
               <Button
