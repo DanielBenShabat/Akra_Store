@@ -187,8 +187,11 @@ export default function ArchiveItemFormDialog({
                         min="0"
                         max="100"
                         step="0.1"
-                        value={field.value}
-                        onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                        value={Number.isNaN(field.value) ? '' : field.value}
+                        onChange={(e) => {
+                          const v = e.target.valueAsNumber;
+                          field.onChange(Number.isNaN(v) ? undefined : v);
+                        }}
                         onBlur={field.onBlur}
                         name={field.name}
                       />
@@ -209,8 +212,11 @@ export default function ArchiveItemFormDialog({
                         min="0"
                         max="100"
                         step="0.1"
-                        value={field.value}
-                        onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                        value={Number.isNaN(field.value) ? '' : field.value}
+                        onChange={(e) => {
+                          const v = e.target.valueAsNumber;
+                          field.onChange(Number.isNaN(v) ? undefined : v);
+                        }}
                         onBlur={field.onBlur}
                         name={field.name}
                       />
@@ -231,8 +237,11 @@ export default function ArchiveItemFormDialog({
                         min="10"
                         max="100"
                         step="0.1"
-                        value={field.value}
-                        onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                        value={Number.isNaN(field.value) ? '' : field.value}
+                        onChange={(e) => {
+                          const v = e.target.valueAsNumber;
+                          field.onChange(Number.isNaN(v) ? undefined : v);
+                        }}
                         onBlur={field.onBlur}
                         name={field.name}
                       />

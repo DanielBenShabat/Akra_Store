@@ -190,8 +190,11 @@ export default function ProductFormDialog({
                         type="number"
                         step="0.01"
                         min="0"
-                        value={field.value}
-                        onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                        value={Number.isNaN(field.value) ? '' : field.value}
+                        onChange={(e) => {
+                          const v = e.target.valueAsNumber;
+                          field.onChange(Number.isNaN(v) ? undefined : v);
+                        }}
                         onBlur={field.onBlur}
                         name={field.name}
                       />
@@ -211,8 +214,11 @@ export default function ProductFormDialog({
                       <Input
                         type="number"
                         min="0"
-                        value={field.value}
-                        onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                        value={Number.isNaN(field.value) ? '' : field.value}
+                        onChange={(e) => {
+                          const v = e.target.valueAsNumber;
+                          field.onChange(Number.isNaN(v) ? undefined : v);
+                        }}
                         onBlur={field.onBlur}
                         name={field.name}
                       />
