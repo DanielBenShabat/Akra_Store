@@ -22,6 +22,7 @@ export interface Product {
   description?: string;
   sizes?: string[];
   imageUrl?: string;
+  isGoosebumps: boolean;
 }
 
 export interface NavItem {

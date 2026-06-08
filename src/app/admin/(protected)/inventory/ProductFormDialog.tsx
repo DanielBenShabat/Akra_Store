@@ -32,6 +32,7 @@ import {
   SelectValue,
 } from '@/components/admin-ui/select';
 import { Checkbox } from '@/components/admin-ui/checkbox';
+import { Switch } from '@/components/admin-ui/switch';
 import { Button } from '@/components/admin-ui/button';
 import { Label } from '@/components/admin-ui/label';
 import { uploadProductImageAction } from './actions';
@@ -40,15 +41,21 @@ const TEE_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 const BOTTOM_SIZES = ['28', '30', '32', '34', '36'];
 const ALL_SIZES = [...TEE_SIZES, ...BOTTOM_SIZES];
 
-const productSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  price: z.number().positive('Must be positive'),
-  categoryId: z.string().min(1, 'Select a category'),
-  stock: z.number().int().min(0, 'Cannot be negative'),
-  description: z.string().optional(),
-  sizes: z.array(z.string()).optional(),
-  imageUrl: z.string().optional(),
-});
+const productSchema = z
+  .object({
+    name: z.string().min(1, 'Name is required'),
+    price: z.number().positive('Must be positive'),
+    categoryId: z.string(),
+    stock: z.number().int().min(0, 'Cannot be negative'),
+    description: z.string().optional(),
+    sizes: z.array(z.string()).optional(),
+    imageUrl: z.string().optional(),
+    isGoosebumps: z.boolean(),
+  })
+  .refine((d) => d.isGoosebumps || d.categoryId.length > 0, {
+    path: ['categoryId'],
+    message: 'Select a category',
+  });
 
 type ProductFormValues = z.infer<typeof productSchema>;
 
@@ -56,7 +63,7 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   product?: Product | null;
-  onSubmit: (data: ProductFormValues) => void;
+  onSubmit: (data: Omit<Product, 'id'>) => void;
   pending: boolean;
   categories: Category[];
 }
@@ -83,8 +90,11 @@ export default function ProductFormDialog({
       description: '',
       sizes: [],
       imageUrl: '',
+      isGoosebumps: false,
     },
   });
+
+  const isGoosebumps = form.watch('isGoosebumps');
 
   useEffect(() => {
     if (open) {
@@ -98,6 +108,7 @@ export default function ProductFormDialog({
               description: product.description ?? '',
               sizes: product.sizes ?? [],
               imageUrl: product.imageUrl ?? '',
+              isGoosebumps: product.isGoosebumps,
             }
           : {
               name: '',
@@ -107,6 +118,7 @@ export default function ProductFormDialog({
               description: '',
               sizes: [],
               imageUrl: '',
+              isGoosebumps: false,
             }
       );
       setPreviewUrl(product?.imageUrl ?? null);
@@ -146,8 +158,12 @@ export default function ProductFormDialog({
   }
 
   const handleSubmit = form.handleSubmit((data) => {
-    const cleaned: ProductFormValues = {
-      ...data,
+    const cleaned: Omit<Product, 'id'> = {
+      name: data.name,
+      price: data.price,
+      stock: data.stock,
+      isGoosebumps: data.isGoosebumps,
+      categoryId: data.isGoosebumps || !data.categoryId ? null : data.categoryId,
       description: data.description || undefined,
       imageUrl: data.imageUrl || undefined,
       sizes: data.sizes?.length ? data.sizes : undefined,
@@ -231,28 +247,48 @@ export default function ProductFormDialog({
 
             <FormField
               control={form.control}
-              name="categoryId"
+              name="isGoosebumps"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Category</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {categories.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id}>
-                          {cat.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
+                <FormItem className="flex items-center justify-between rounded-md border border-border p-3">
+                  <div className="space-y-0.5">
+                    <FormLabel>Add to Goosebumps Collection</FormLabel>
+                    <p className="text-sm text-muted-foreground">
+                      Goosebumps products appear on the Goosebumps page and are excluded from Available.
+                    </p>
+                  </div>
+                  <FormControl>
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  </FormControl>
                 </FormItem>
               )}
             />
+
+            {!isGoosebumps && (
+              <FormField
+                control={form.control}
+                name="categoryId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Category</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {categories.map((cat) => (
+                          <SelectItem key={cat.id} value={cat.id}>
+                            {cat.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             <FormField
               control={form.control}

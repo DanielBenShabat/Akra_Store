@@ -11,6 +11,7 @@ type DbProduct = {
   description: string | null;
   sizes: string[] | null;
   image_url: string | null;
+  is_goosebumps: boolean;
 };
 
 type DbCategory = {
@@ -30,6 +31,7 @@ function toProduct(row: DbProduct): Product {
     description: row.description ?? undefined,
     sizes: row.sizes ?? undefined,
     imageUrl: row.image_url ?? undefined,
+    isGoosebumps: row.is_goosebumps,
   };
 }
 
@@ -51,6 +53,7 @@ function toRow(data: Partial<Omit<Product, 'id'>>): Record<string, unknown> {
   if ('sizes' in data) row.sizes = data.sizes ?? null;
   if ('imageUrl' in data) row.image_url = data.imageUrl ?? null;
   if ('categoryId' in data) row.category_id = data.categoryId ?? null;
+  if ('isGoosebumps' in data) row.is_goosebumps = data.isGoosebumps;
   return row;
 }
 
@@ -58,6 +61,15 @@ function toRow(data: Partial<Omit<Product, 'id'>>): Record<string, unknown> {
 
 export async function getProducts(): Promise<Product[]> {
   const { data, error } = await supabase.from('products').select('*');
+  if (error) throw new Error(error.message);
+  return (data as DbProduct[]).map(toProduct);
+}
+
+export async function getGoosebumpsProducts(): Promise<Product[]> {
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .eq('is_goosebumps', true);
   if (error) throw new Error(error.message);
   return (data as DbProduct[]).map(toProduct);
 }
@@ -122,6 +134,7 @@ export async function getCategoriesWithProducts(): Promise<CategoryWithProducts[
 
   const byCategory = new Map<string, Product[]>();
   for (const p of prods) {
+    if (p.isGoosebumps) continue;
     if (!p.categoryId) continue;
     if (!byCategory.has(p.categoryId)) byCategory.set(p.categoryId, []);
     byCategory.get(p.categoryId)!.push(p);

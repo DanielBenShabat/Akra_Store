@@ -125,7 +125,11 @@ export default function InventoryClient({ products, categories }: Props) {
                 <TableRow key={product.id}>
                   <TableCell className="font-medium">{product.name}</TableCell>
                   <TableCell>
-                    {cat ? (
+                    {product.isGoosebumps ? (
+                      <Badge className="bg-rose-100 text-rose-700 border-rose-200 hover:bg-rose-100">
+                        Goosebumps
+                      </Badge>
+                    ) : cat ? (
                       <Badge variant="outline" className="text-muted-foreground capitalize">
                         {cat.name}
                       </Badge>
