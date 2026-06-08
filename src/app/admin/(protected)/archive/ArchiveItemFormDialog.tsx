@@ -36,6 +36,8 @@ const archiveSchema = z.object({
 
 type ArchiveFormValues = z.infer<typeof archiveSchema>;
 
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -84,24 +86,36 @@ export default function ArchiveItemFormDialog({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (file.size > MAX_IMAGE_BYTES) {
+      toast.error('Image is too large (max 8MB). Please choose a smaller file.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
     setIsUploading(true);
     setPreviewUrl(URL.createObjectURL(file));
 
     const formData = new FormData();
     formData.append('file', file);
 
-    const result = await uploadArchiveImageAction(formData);
+    try {
+      const result = await uploadArchiveImageAction(formData);
 
-    if (result.error) {
-      toast.error(`Upload failed: ${result.error}`);
+      if (result.error) {
+        toast.error(`Upload failed: ${result.error}`);
+        setPreviewUrl(form.getValues('imageUrl') || null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      } else {
+        form.setValue('imageUrl', result.url!, { shouldValidate: true });
+        setPreviewUrl(result.url!);
+      }
+    } catch {
+      toast.error('Upload failed. Check your connection and try again.');
       setPreviewUrl(form.getValues('imageUrl') || null);
       if (fileInputRef.current) fileInputRef.current.value = '';
-    } else {
-      form.setValue('imageUrl', result.url!, { shouldValidate: true });
-      setPreviewUrl(result.url!);
+    } finally {
+      setIsUploading(false);
     }
-
-    setIsUploading(false);
   }
 
   function clearImage() {

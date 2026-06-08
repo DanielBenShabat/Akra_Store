@@ -41,6 +41,8 @@ const TEE_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 const BOTTOM_SIZES = ['28', '30', '32', '34', '36'];
 const ALL_SIZES = [...TEE_SIZES, ...BOTTOM_SIZES];
 
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+
 const productSchema = z
   .object({
     name: z.string().min(1, 'Name is required'),
@@ -131,24 +133,36 @@ export default function ProductFormDialog({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (file.size > MAX_IMAGE_BYTES) {
+      toast.error('Image is too large (max 8MB). Please choose a smaller file.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
     setIsUploading(true);
     setPreviewUrl(URL.createObjectURL(file));
 
     const formData = new FormData();
     formData.append('file', file);
 
-    const result = await uploadProductImageAction(formData);
+    try {
+      const result = await uploadProductImageAction(formData);
 
-    if (result.error) {
-      toast.error(`Upload failed: ${result.error}`);
+      if (result.error) {
+        toast.error(`Upload failed: ${result.error}`);
+        setPreviewUrl(form.getValues('imageUrl') || null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      } else {
+        form.setValue('imageUrl', result.url!);
+        setPreviewUrl(result.url!);
+      }
+    } catch {
+      toast.error('Upload failed. Check your connection and try again.');
       setPreviewUrl(form.getValues('imageUrl') || null);
       if (fileInputRef.current) fileInputRef.current.value = '';
-    } else {
-      form.setValue('imageUrl', result.url!);
-      setPreviewUrl(result.url!);
+    } finally {
+      setIsUploading(false);
     }
-
-    setIsUploading(false);
   }
 
   function clearImage() {
