@@ -1,6 +1,6 @@
 import 'server-only';
 import { supabase } from './supabase';
-import type { Product, Category } from '@/types';
+import type { Product, Category, ArchiveItem } from '@/types';
 
 type DbProduct = {
   id: string;
@@ -167,6 +167,74 @@ export async function updateCategory(id: string, name: string): Promise<Category
 
 export async function deleteCategory(id: string): Promise<void> {
   const { error } = await supabase.from('categories').delete().eq('id', id);
+  if (error) throw new Error(error.message);
+}
+
+// ── Archive ───────────────────────────────────────────────────────────────────
+
+type DbArchiveItem = {
+  id: string;
+  image_url: string;
+  x_position: number;
+  y_position: number;
+  size: number;
+};
+
+function toArchiveItem(row: DbArchiveItem): ArchiveItem {
+  return {
+    id: row.id,
+    imageUrl: row.image_url,
+    xPosition: row.x_position,
+    yPosition: row.y_position,
+    size: row.size,
+  };
+}
+
+function toArchiveRow(data: Partial<Omit<ArchiveItem, 'id'>>): Record<string, unknown> {
+  const row: Record<string, unknown> = {};
+  if ('imageUrl' in data) row.image_url = data.imageUrl;
+  if ('xPosition' in data) row.x_position = data.xPosition;
+  if ('yPosition' in data) row.y_position = data.yPosition;
+  if ('size' in data) row.size = data.size;
+  return row;
+}
+
+export async function getArchiveItems(): Promise<ArchiveItem[]> {
+  const { data, error } = await supabase
+    .from('archive_items')
+    .select('*')
+    .order('created_at', { ascending: true });
+  if (error) throw new Error(error.message);
+  return (data as DbArchiveItem[]).map(toArchiveItem);
+}
+
+export async function createArchiveItem(data: Omit<ArchiveItem, 'id'>): Promise<ArchiveItem> {
+  const { data: created, error } = await supabase
+    .from('archive_items')
+    .insert(toArchiveRow(data))
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return toArchiveItem(created as DbArchiveItem);
+}
+
+export async function updateArchiveItem(
+  id: string,
+  data: Partial<Omit<ArchiveItem, 'id'>>,
+): Promise<ArchiveItem> {
+  const { data: updated, error } = await supabase
+    .from('archive_items')
+    .update(toArchiveRow(data))
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  if (!updated) throw new Error(`Archive item ${id} not found`);
+  return toArchiveItem(updated as DbArchiveItem);
+}
+
+export async function deleteArchiveItem(id: string): Promise<void> {
+  const { error } = await supabase.from('archive_items').delete().eq('id', id);
   if (error) throw new Error(error.message);
 }
 

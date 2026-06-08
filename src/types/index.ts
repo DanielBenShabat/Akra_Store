@@ -5,6 +5,14 @@ export interface Category {
   displayOrder: number;
 }
 
+export interface ArchiveItem {
+  id: string;
+  imageUrl: string;
+  xPosition: number;
+  yPosition: number;
+  size: number;
+}
+
 export interface Product {
   id: string;
   name: string;
