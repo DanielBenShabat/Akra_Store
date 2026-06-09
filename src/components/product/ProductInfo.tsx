@@ -5,7 +5,7 @@ import type { Product } from '@/types';
 import { formatPrice } from '@/lib/utils';
 import { siteConfig } from '@/config/site';
 import { SizeSelector } from './SizeSelector';
-import { AddToCartButton } from './AddToCartButton';
+import { BuyNowButton } from './BuyNowButton';
 
 interface ProductInfoProps {
   product: Product;
@@ -39,7 +39,7 @@ export function ProductInfo({ product }: ProductInfoProps) {
         />
       )}
 
-      <AddToCartButton product={product} selectedSize={selectedSize} />
+      <BuyNowButton product={product} selectedSize={selectedSize} />
     </div>
   );
 }

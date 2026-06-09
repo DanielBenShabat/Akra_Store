@@ -1,7 +1,6 @@
 'use client';
 
 import { Menu } from 'lucide-react';
-import { CartButton } from '@/components/cart/CartButton';
 import { useNav } from './NavContext';
 
 export function TopBar() {
@@ -26,7 +25,7 @@ export function TopBar() {
           </span>
         </div>
 
-        <CartButton />
+        <div className="w-11" aria-hidden="true" />
       </div>
     </div>
   );

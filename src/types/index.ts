@@ -25,6 +25,32 @@ export interface Product {
   isGoosebumps: boolean;
 }
 
+export interface Order {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  subtotal: number;
+  shippingCost: number;
+  total: number;
+  currency: string;
+  status: 'pending' | 'paid' | 'failed';
+  createdAt: string;
+}
+
+export interface OrderItem {
+  id: string;
+  orderId: string;
+  productId: string;
+  name: string;
+  size: string;
+  price: number;
+  quantity: number;
+}
+
 export interface NavItem {
   label: string;
   href: string;

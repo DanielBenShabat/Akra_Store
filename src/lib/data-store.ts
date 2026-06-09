@@ -1,5 +1,7 @@
 import 'server-only';
 import { supabase } from './supabase';
+import { calculateTotals } from './pricing';
+import { siteConfig } from '@/config/site';
 import type { Product, Category, ArchiveItem } from '@/types';
 
 type DbProduct = {
@@ -287,4 +289,113 @@ export async function getOrders(): Promise<OrderRow[]> {
     .order('created_at', { ascending: false });
   if (error) throw new Error(error.message);
   return (data ?? []) as OrderRow[];
+}
+
+export interface ShippingDetails {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+}
+
+export interface CreatePendingOrderInput {
+  productId: string;
+  size: string;
+  quantity: number;
+  shipping: ShippingDetails;
+}
+
+export async function createPendingOrder(
+  input: CreatePendingOrderInput,
+): Promise<{ orderId: string }> {
+  const { data: product, error: productError } = await supabase
+    .from('products')
+    .select('id, name, price, stock')
+    .eq('id', input.productId)
+    .maybeSingle();
+  if (productError) throw new Error(productError.message);
+  if (!product) throw new Error('This product is no longer available');
+  if (product.stock < input.quantity) throw new Error(`${product.name} is out of stock`);
+
+  const subtotal = product.price * input.quantity;
+  const totals = calculateTotals(subtotal);
+
+  const { data: order, error: orderError } = await supabase
+    .from('orders')
+    .insert({
+      first_name: input.shipping.firstName,
+      last_name: input.shipping.lastName,
+      email: input.shipping.email,
+      phone: input.shipping.phone,
+      address: input.shipping.address,
+      city: input.shipping.city,
+      subtotal: totals.subtotal,
+      shipping_cost: totals.shipping,
+      total: totals.total,
+      currency: siteConfig.currency.code,
+      status: 'pending',
+      payment_provider: 'grow-mock',
+    })
+    .select('id')
+    .single();
+  if (orderError || !order) throw new Error(orderError?.message ?? 'Failed to create order');
+
+  const { error: itemError } = await supabase.from('order_items').insert({
+    order_id: order.id,
+    product_id: product.id,
+    name: product.name,
+    size: input.size,
+    price: product.price,
+    quantity: input.quantity,
+  });
+  if (itemError) throw new Error(itemError.message);
+
+  return { orderId: order.id as string };
+}
+
+export async function updateOrderStatus(
+  orderId: string,
+  status: 'paid' | 'failed',
+): Promise<void> {
+  const { data: order, error: fetchError } = await supabase
+    .from('orders')
+    .select('id, status')
+    .eq('id', orderId)
+    .maybeSingle();
+  if (fetchError) throw new Error(fetchError.message);
+  if (!order) throw new Error('Order not found');
+  if (order.status !== 'pending') return;
+
+  if (status === 'failed') {
+    const { error } = await supabase
+      .from('orders')
+      .update({ status: 'failed' })
+      .eq('id', orderId);
+    if (error) throw new Error(error.message);
+    return;
+  }
+
+  const { error: updateError } = await supabase
+    .from('orders')
+    .update({
+      status: 'paid',
+      payment_reference: `MOCK-${orderId.slice(0, 8).toUpperCase()}`,
+    })
+    .eq('id', orderId);
+  if (updateError) throw new Error(updateError.message);
+
+  const { data: items, error: itemsError } = await supabase
+    .from('order_items')
+    .select('product_id, quantity')
+    .eq('order_id', orderId);
+  if (itemsError) throw new Error(itemsError.message);
+
+  for (const item of items ?? []) {
+    await supabase.rpc('decrement_product_stock', {
+      p_id: item.product_id,
+      qty: item.quantity,
+    });
+  }
 }
