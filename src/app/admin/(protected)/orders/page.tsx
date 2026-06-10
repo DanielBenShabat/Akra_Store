@@ -14,9 +14,11 @@ import {
 export const dynamic = 'force-dynamic';
 
 const statusVariant: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-  paid: 'default',
   pending: 'secondary',
-  failed: 'destructive',
+  confirmed: 'default',
+  shipped: 'default',
+  delivered: 'default',
+  cancelled: 'destructive',
 };
 
 export default async function OrdersPage() {

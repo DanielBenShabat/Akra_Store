@@ -1,7 +1,6 @@
 import 'server-only';
 import { supabase } from './supabase';
 import { calculateTotals } from './pricing';
-import { siteConfig } from '@/config/site';
 import type { Product, Category, ArchiveItem } from '@/types';
 
 type DbProduct = {
@@ -258,14 +257,13 @@ export async function deleteArchiveItem(id: string): Promise<void> {
 export interface OrderSummary {
   id: string;
   total: number;
-  currency: string;
   status: string;
 }
 
 export async function getOrderById(id: string): Promise<OrderSummary | null> {
   const { data, error } = await supabase
     .from('orders')
-    .select('id, total, currency, status')
+    .select('id, total, status')
     .eq('id', id)
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -277,7 +275,6 @@ export interface OrderRow {
   first_name: string;
   last_name: string;
   total: number;
-  currency: string;
   status: string;
   created_at: string;
 }
@@ -285,7 +282,7 @@ export interface OrderRow {
 export async function getOrders(): Promise<OrderRow[]> {
   const { data, error } = await supabase
     .from('orders')
-    .select('id, first_name, last_name, total, currency, status, created_at')
+    .select('id, first_name, last_name, total, status, created_at')
     .order('created_at', { ascending: false });
   if (error) throw new Error(error.message);
   return (data ?? []) as OrderRow[];
@@ -332,11 +329,8 @@ export async function createPendingOrder(
       address: input.shipping.address,
       city: input.shipping.city,
       subtotal: totals.subtotal,
-      shipping_cost: totals.shipping,
       total: totals.total,
-      currency: siteConfig.currency.code,
       status: 'pending',
-      payment_provider: 'grow-mock',
     })
     .select('id')
     .single();
@@ -357,7 +351,7 @@ export async function createPendingOrder(
 
 export async function updateOrderStatus(
   orderId: string,
-  status: 'paid' | 'failed',
+  outcome: 'paid' | 'failed',
 ): Promise<void> {
   const { data: order, error: fetchError } = await supabase
     .from('orders')
@@ -368,10 +362,10 @@ export async function updateOrderStatus(
   if (!order) throw new Error('Order not found');
   if (order.status !== 'pending') return;
 
-  if (status === 'failed') {
+  if (outcome === 'failed') {
     const { error } = await supabase
       .from('orders')
-      .update({ status: 'failed' })
+      .update({ status: 'cancelled' })
       .eq('id', orderId);
     if (error) throw new Error(error.message);
     return;
@@ -379,10 +373,7 @@ export async function updateOrderStatus(
 
   const { error: updateError } = await supabase
     .from('orders')
-    .update({
-      status: 'paid',
-      payment_reference: `MOCK-${orderId.slice(0, 8).toUpperCase()}`,
-    })
+    .update({ status: 'confirmed' })
     .eq('id', orderId);
   if (updateError) throw new Error(updateError.message);
 

@@ -12,7 +12,7 @@ interface Props {
 export default async function CheckoutSuccessPage({ searchParams }: Props) {
   const { order: orderId } = await searchParams;
   const order = orderId ? await getOrderById(orderId) : null;
-  const paid = order?.status === 'paid';
+  const paid = order?.status === 'confirmed';
 
   return (
     <>

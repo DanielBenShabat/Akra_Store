@@ -34,10 +34,8 @@ export interface Order {
   address: string;
   city: string;
   subtotal: number;
-  shippingCost: number;
   total: number;
-  currency: string;
-  status: 'pending' | 'paid' | 'failed';
+  status: 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
   createdAt: string;
 }
 

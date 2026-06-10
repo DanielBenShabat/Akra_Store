@@ -18,7 +18,7 @@ export default async function MockPaymentPage({ searchParams }: Props) {
 
   const order = await getOrderById(orderId);
   if (!order) redirect('/');
-  if (order.status === 'paid') redirect(`/checkout/success?order=${orderId}`);
+  if (order.status === 'confirmed') redirect(`/checkout/success?order=${orderId}`);
 
   return (
     <>
