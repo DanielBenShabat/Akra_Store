@@ -144,9 +144,9 @@ export default function InventoryClient({ products, categories }: Props) {
                     <StatusBadge stock={product.stock} />
                   </TableCell>
                   <TableCell>
-                    {product.imageUrl ? (
+                    {product.images[0] ? (
                       <img
-                        src={product.imageUrl}
+                        src={product.images[0]}
                         alt={product.name}
                         className="h-8 w-8 rounded object-cover"
                       />

@@ -11,7 +11,7 @@ type DbProduct = {
   stock: number;
   description: string | null;
   sizes: string[] | null;
-  image_url: string | null;
+  image_urls: string[] | null;
   is_goosebumps: boolean;
 };
 
@@ -31,7 +31,7 @@ function toProduct(row: DbProduct): Product {
     stock: row.stock,
     description: row.description ?? undefined,
     size: row.sizes && row.sizes.length > 0 ? row.sizes[0] : 'One Size',
-    imageUrl: row.image_url ?? undefined,
+    images: row.image_urls ?? [],
     isGoosebumps: row.is_goosebumps,
   };
 }
@@ -52,7 +52,7 @@ function toRow(data: Partial<Omit<Product, 'id'>>): Record<string, unknown> {
   if ('stock' in data) row.stock = data.stock;
   if ('description' in data) row.description = data.description ?? null;
   if ('size' in data) row.sizes = data.size ? [data.size] : null;
-  if ('imageUrl' in data) row.image_url = data.imageUrl ?? null;
+  if ('images' in data) row.image_urls = data.images && data.images.length ? data.images : null;
   if ('categoryId' in data) row.category_id = data.categoryId ?? null;
   if ('isGoosebumps' in data) row.is_goosebumps = data.isGoosebumps;
   return row;

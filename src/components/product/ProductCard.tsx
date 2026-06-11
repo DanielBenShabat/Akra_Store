@@ -18,10 +18,10 @@ export function ProductCard({ product }: ProductCardProps) {
         className="relative w-full group block overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-foreground"
       >
         <div className="transition-transform duration-300 group-hover:scale-105">
-          {product.imageUrl ? (
+          {product.images[0] ? (
             <div className="relative w-full aspect-square">
               <Image
-                src={product.imageUrl}
+                src={product.images[0]}
                 alt={product.name}
                 fill
                 className="object-cover"

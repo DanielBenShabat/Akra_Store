@@ -27,7 +27,7 @@ create table if not exists products (
   stock         integer not null default 1,
   description   text,
   sizes         text[],
-  image_url     text,
+  image_urls    text[], -- ordered; first element is the primary thumbnail
   category_id   uuid references categories(id) on delete set null,
   is_goosebumps boolean not null default false
 );

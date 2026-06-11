@@ -37,8 +37,8 @@ export default async function CheckoutPage({ searchParams }: Props) {
 
           <div className="border border-border p-4 mb-8 flex gap-4">
             <div className="relative w-20 h-20 shrink-0 bg-border overflow-hidden">
-              {product.imageUrl ? (
-                <Image src={product.imageUrl} alt={product.name} fill className="object-cover" sizes="80px" />
+              {product.images[0] ? (
+                <Image src={product.images[0]} alt={product.name} fill className="object-cover" sizes="80px" />
               ) : (
                 <div className="w-full h-full bg-border" aria-hidden="true" />
               )}

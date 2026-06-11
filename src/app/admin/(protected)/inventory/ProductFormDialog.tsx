@@ -47,7 +47,7 @@ const productSchema = z
     categoryId: z.string(),
     description: z.string().optional(),
     size: z.string().min(1, 'Size is required'),
-    imageUrl: z.string().optional(),
+    images: z.array(z.string()),
     isGoosebumps: z.boolean(),
   })
   .refine((d) => d.isGoosebumps || d.categoryId.length > 0, {
@@ -75,7 +75,6 @@ export default function ProductFormDialog({
   categories,
 }: Props) {
   const [isUploading, setIsUploading] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<ProductFormValues>({
@@ -86,12 +85,13 @@ export default function ProductFormDialog({
       categoryId: '',
       description: '',
       size: 'One Size',
-      imageUrl: '',
+      images: [],
       isGoosebumps: false,
     },
   });
 
   const isGoosebumps = form.watch('isGoosebumps');
+  const images = form.watch('images');
 
   useEffect(() => {
     if (open) {
@@ -103,7 +103,7 @@ export default function ProductFormDialog({
               categoryId: product.categoryId ?? '',
               description: product.description ?? '',
               size: product.size,
-              imageUrl: product.imageUrl ?? '',
+              images: product.images,
               isGoosebumps: product.isGoosebumps,
             }
           : {
@@ -112,56 +112,66 @@ export default function ProductFormDialog({
               categoryId: categories[0]?.id ?? '',
               description: '',
               size: 'One Size',
-              imageUrl: '',
+              images: [],
               isGoosebumps: false,
             }
       );
-      setPreviewUrl(product?.imageUrl ?? null);
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   }, [open, product, form, categories]);
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const selected = Array.from(e.target.files ?? []);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (selected.length === 0) return;
 
-    if (file.size > MAX_IMAGE_BYTES) {
-      toast.error('Image is too large (max 8MB). Please choose a smaller file.');
-      if (fileInputRef.current) fileInputRef.current.value = '';
-      return;
+    const valid: File[] = [];
+    for (const file of selected) {
+      if (file.size > MAX_IMAGE_BYTES) {
+        toast.error(`${file.name} is too large (max 8MB) and was skipped.`);
+      } else {
+        valid.push(file);
+      }
     }
+    if (valid.length === 0) return;
 
     setIsUploading(true);
-    setPreviewUrl(URL.createObjectURL(file));
-
-    const formData = new FormData();
-    formData.append('file', file);
-
     try {
-      const result = await uploadProductImageAction(formData);
+      const results = await Promise.allSettled(
+        valid.map(async (file) => {
+          const formData = new FormData();
+          formData.append('file', file);
+          const result = await uploadProductImageAction(formData);
+          if (result.error || !result.url) throw new Error(result.error ?? 'Upload failed');
+          return result.url;
+        }),
+      );
 
-      if (result.error) {
-        toast.error(`Upload failed: ${result.error}`);
-        setPreviewUrl(form.getValues('imageUrl') || null);
-        if (fileInputRef.current) fileInputRef.current.value = '';
-      } else {
-        form.setValue('imageUrl', result.url!);
-        setPreviewUrl(result.url!);
+      const urls = results
+        .filter((r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled')
+        .map((r) => r.value);
+      const failed = results.length - urls.length;
+
+      if (urls.length > 0) {
+        form.setValue('images', [...form.getValues('images'), ...urls], { shouldValidate: true });
+      }
+      if (failed > 0) {
+        toast.error(`${failed} image${failed > 1 ? 's' : ''} failed to upload.`);
       }
     } catch {
       toast.error('Upload failed. Check your connection and try again.');
-      setPreviewUrl(form.getValues('imageUrl') || null);
-      if (fileInputRef.current) fileInputRef.current.value = '';
     } finally {
       setIsUploading(false);
     }
   }
 
-  function clearImage() {
-    form.setValue('imageUrl', '');
-    setPreviewUrl(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
+  function removeImage(index: number) {
+    form.setValue(
+      'images',
+      form.getValues('images').filter((_, i) => i !== index),
+      { shouldValidate: true },
+    );
   }
 
   const handleSubmit = form.handleSubmit((data) => {
@@ -171,7 +181,7 @@ export default function ProductFormDialog({
       isGoosebumps: data.isGoosebumps,
       categoryId: data.isGoosebumps || !data.categoryId ? null : data.categoryId,
       description: data.description || undefined,
-      imageUrl: data.imageUrl || undefined,
+      images: data.images,
       size: data.size,
     };
     onSubmit(cleaned);
@@ -312,27 +322,34 @@ export default function ProductFormDialog({
             />
 
             <div className="space-y-2">
-              <Label>Product Image</Label>
+              <Label>Product Images</Label>
               <div className="space-y-3">
-                {previewUrl && (
-                  <div className="relative w-24 h-24 rounded-md overflow-hidden border border-border">
-                    {isUploading && (
-                      <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/50">
-                        <Loader2 className="h-5 w-5 text-white animate-spin" />
-                      </div>
-                    )}
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
-                    {!isUploading && (
-                      <button
-                        type="button"
-                        onClick={clearImage}
-                        className="absolute top-1 right-1 z-10 rounded-full bg-black/60 p-0.5 text-white hover:bg-black/80"
-                        aria-label="Remove image"
+                {images.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {images.map((url, index) => (
+                      <div
+                        key={url}
+                        className="relative w-24 h-24 rounded-md overflow-hidden border border-border"
                       >
-                        <X className="h-3 w-3" />
-                      </button>
-                    )}
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={url} alt={`Image ${index + 1}`} className="w-full h-full object-cover" />
+                        {index === 0 && (
+                          <span className="absolute inset-x-0 bottom-0 bg-black/60 py-0.5 text-center text-[10px] text-white">
+                            Primary
+                          </span>
+                        )}
+                        {!isUploading && (
+                          <button
+                            type="button"
+                            onClick={() => removeImage(index)}
+                            className="absolute top-1 right-1 z-10 rounded-full bg-black/60 p-0.5 text-white hover:bg-black/80"
+                            aria-label={`Remove image ${index + 1}`}
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 )}
 
@@ -343,12 +360,12 @@ export default function ProductFormDialog({
                   {isUploading ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin shrink-0" />
-                      <span>Uploading image…</span>
+                      <span>Uploading images…</span>
                     </>
                   ) : (
                     <>
                       <ImageIcon className="h-4 w-4 shrink-0" />
-                      <span>{previewUrl ? 'Replace image' : 'Choose image'}</span>
+                      <span>{images.length > 0 ? 'Add more images' : 'Choose images'}</span>
                     </>
                   )}
                   <input
@@ -356,6 +373,7 @@ export default function ProductFormDialog({
                     ref={fileInputRef}
                     type="file"
                     accept="image/*"
+                    multiple
                     className="sr-only"
                     disabled={isUploading}
                     onChange={handleFileChange}

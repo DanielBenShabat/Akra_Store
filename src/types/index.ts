@@ -21,7 +21,7 @@ export interface Product {
   stock: number;
   description?: string;
   size: string;
-  imageUrl?: string;
+  images: string[];
   isGoosebumps: boolean;
 }
 

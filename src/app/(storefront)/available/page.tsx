@@ -48,9 +48,9 @@ export default async function AvailablePage() {
                       className="snap-start shrink-0 w-44 flex flex-col gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground rounded-sm"
                     >
                       <div className="relative aspect-[3/4] w-full bg-border overflow-hidden">
-                        {product.imageUrl ? (
+                        {product.images[0] ? (
                           <Image
-                            src={product.imageUrl}
+                            src={product.images[0]}
                             alt={product.name}
                             fill
                             className="object-cover"
