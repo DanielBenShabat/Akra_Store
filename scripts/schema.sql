@@ -8,9 +8,10 @@ create table if not exists products (
   name        text not null,
   price       numeric(10, 2) not null,
   category    text not null check (category in ('tees', 'bottoms', 'accessories', 'socks', 'featured')),
-  stock       integer not null default 0,
+  stock       integer not null default 1, -- 1-of-1 model: 1 = available, 0 = sold
   description text,
-  sizes       text[],
+  sizes       text[], -- 1-of-1 model: holds exactly one size element
+
   image_url   text,
   created_at  timestamptz not null default now()
 );

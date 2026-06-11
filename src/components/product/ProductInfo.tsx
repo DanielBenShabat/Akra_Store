@@ -27,11 +27,9 @@ export function ProductInfo({ product }: ProductInfoProps) {
         </p>
       )}
 
-      <div className="inline-flex w-fit items-center gap-2 border border-border px-4 py-2">
-        <span className="text-badge uppercase tracking-nav text-muted-foreground">Size</span>
-        <span className="text-nav font-medium">{product.size}</span>
-        <span className="text-badge uppercase tracking-nav text-muted-foreground">· 1 of 1</span>
-      </div>
+      <p className="text-nav text-muted-foreground">
+        Size: <span className="font-medium text-foreground">{product.size}</span>
+      </p>
 
       <BuyNowButton product={product} />
     </div>
