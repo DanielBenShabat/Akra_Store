@@ -6,18 +6,15 @@ import type { Product } from '@/types';
 
 interface BuyNowButtonProps {
   product: Product;
-  selectedSize: string | null;
 }
 
-export function BuyNowButton({ product, selectedSize }: BuyNowButtonProps) {
+export function BuyNowButton({ product }: BuyNowButtonProps) {
   const router = useRouter();
-  const hasSizes = !!product.sizes && product.sizes.length > 0;
-  const size = hasSizes ? selectedSize : 'One Size';
-  const disabled = hasSizes && !selectedSize;
+  const soldOut = product.stock < 1;
 
   function handleBuyNow() {
-    if (!size) return;
-    const params = new URLSearchParams({ productId: product.id, size });
+    if (soldOut) return;
+    const params = new URLSearchParams({ productId: product.id, size: product.size });
     router.push(`/checkout?${params.toString()}`);
   }
 
@@ -26,9 +23,9 @@ export function BuyNowButton({ product, selectedSize }: BuyNowButtonProps) {
       variant="default"
       className="w-full py-4 text-nav uppercase tracking-nav"
       onClick={handleBuyNow}
-      disabled={disabled}
+      disabled={soldOut}
     >
-      {disabled ? 'Select a Size' : 'Buy Now'}
+      {soldOut ? 'Sold Out' : 'Buy Now'}
     </Button>
   );
 }

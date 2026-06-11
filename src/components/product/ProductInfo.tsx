@@ -1,10 +1,8 @@
 'use client';
 
-import { useState } from 'react';
 import type { Product } from '@/types';
 import { formatPrice } from '@/lib/utils';
 import { siteConfig } from '@/config/site';
-import { SizeSelector } from './SizeSelector';
 import { BuyNowButton } from './BuyNowButton';
 
 interface ProductInfoProps {
@@ -12,8 +10,6 @@ interface ProductInfoProps {
 }
 
 export function ProductInfo({ product }: ProductInfoProps) {
-  const [selectedSize, setSelectedSize] = useState<string | null>(null);
-
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
@@ -31,15 +27,13 @@ export function ProductInfo({ product }: ProductInfoProps) {
         </p>
       )}
 
-      {product.sizes && product.sizes.length > 0 && (
-        <SizeSelector
-          sizes={product.sizes}
-          selected={selectedSize}
-          onSelect={setSelectedSize}
-        />
-      )}
+      <div className="inline-flex w-fit items-center gap-2 border border-border px-4 py-2">
+        <span className="text-badge uppercase tracking-nav text-muted-foreground">Size</span>
+        <span className="text-nav font-medium">{product.size}</span>
+        <span className="text-badge uppercase tracking-nav text-muted-foreground">· 1 of 1</span>
+      </div>
 
-      <BuyNowButton product={product} selectedSize={selectedSize} />
+      <BuyNowButton product={product} />
     </div>
   );
 }

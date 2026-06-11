@@ -19,12 +19,12 @@ import { createProductAction, updateProductAction, deleteProductAction } from '.
 import ProductFormDialog from './ProductFormDialog';
 import DeleteConfirmDialog from './DeleteConfirmDialog';
 
-function StockBadge({ stock }: { stock: number }) {
-  if (stock < 3)
-    return <Badge className="bg-red-100 text-red-700 border-red-200 hover:bg-red-100">{stock}</Badge>;
-  if (stock < 10)
-    return <Badge className="bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-100">{stock}</Badge>;
-  return <Badge className="bg-green-100 text-green-700 border-green-200 hover:bg-green-100">{stock}</Badge>;
+function StatusBadge({ stock }: { stock: number }) {
+  if (stock < 1)
+    return <Badge className="bg-zinc-100 text-zinc-600 border-zinc-200 hover:bg-zinc-100">Sold</Badge>;
+  return (
+    <Badge className="bg-green-100 text-green-700 border-green-200 hover:bg-green-100">Available</Badge>
+  );
 }
 
 interface Props {
@@ -32,7 +32,7 @@ interface Props {
   categories: Category[];
 }
 
-type ProductFormValues = Omit<Product, 'id'>;
+type ProductFormValues = Omit<Product, 'id' | 'stock'>;
 
 export default function InventoryClient({ products, categories }: Props) {
   const router = useRouter();
@@ -106,7 +106,8 @@ export default function InventoryClient({ products, categories }: Props) {
               <TableHead>Name</TableHead>
               <TableHead>Category</TableHead>
               <TableHead>Price</TableHead>
-              <TableHead>Stock</TableHead>
+              <TableHead>Size</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead>Image</TableHead>
               <TableHead className="w-[100px]">Actions</TableHead>
             </TableRow>
@@ -114,7 +115,7 @@ export default function InventoryClient({ products, categories }: Props) {
           <TableBody>
             {products.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground py-10">
+                <TableCell colSpan={7} className="text-center text-muted-foreground py-10">
                   No products yet. Add your first product.
                 </TableCell>
               </TableRow>
@@ -138,8 +139,9 @@ export default function InventoryClient({ products, categories }: Props) {
                     )}
                   </TableCell>
                   <TableCell>₪{product.price.toFixed(2)}</TableCell>
+                  <TableCell>{product.size}</TableCell>
                   <TableCell>
-                    <StockBadge stock={product.stock} />
+                    <StatusBadge stock={product.stock} />
                   </TableCell>
                   <TableCell>
                     {product.imageUrl ? (

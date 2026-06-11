@@ -31,15 +31,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/admin-ui/select';
-import { Checkbox } from '@/components/admin-ui/checkbox';
 import { Switch } from '@/components/admin-ui/switch';
 import { Button } from '@/components/admin-ui/button';
 import { Label } from '@/components/admin-ui/label';
 import { uploadProductImageAction } from './actions';
 
-const TEE_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
-const BOTTOM_SIZES = ['28', '30', '32', '34', '36'];
-const ALL_SIZES = [...TEE_SIZES, ...BOTTOM_SIZES];
+const SIZE_OPTIONS = ['One Size', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '28', '30', '32', '34', '36'];
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 
@@ -48,9 +45,8 @@ const productSchema = z
     name: z.string().min(1, 'Name is required'),
     price: z.number().positive('Must be positive'),
     categoryId: z.string(),
-    stock: z.number().int().min(0, 'Cannot be negative'),
     description: z.string().optional(),
-    sizes: z.array(z.string()).optional(),
+    size: z.string().min(1, 'Size is required'),
     imageUrl: z.string().optional(),
     isGoosebumps: z.boolean(),
   })
@@ -65,7 +61,7 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   product?: Product | null;
-  onSubmit: (data: Omit<Product, 'id'>) => void;
+  onSubmit: (data: Omit<Product, 'id' | 'stock'>) => void;
   pending: boolean;
   categories: Category[];
 }
@@ -88,9 +84,8 @@ export default function ProductFormDialog({
       name: '',
       price: 0,
       categoryId: '',
-      stock: 0,
       description: '',
-      sizes: [],
+      size: 'One Size',
       imageUrl: '',
       isGoosebumps: false,
     },
@@ -106,9 +101,8 @@ export default function ProductFormDialog({
               name: product.name,
               price: product.price,
               categoryId: product.categoryId ?? '',
-              stock: product.stock,
               description: product.description ?? '',
-              sizes: product.sizes ?? [],
+              size: product.size,
               imageUrl: product.imageUrl ?? '',
               isGoosebumps: product.isGoosebumps,
             }
@@ -116,9 +110,8 @@ export default function ProductFormDialog({
               name: '',
               price: 0,
               categoryId: categories[0]?.id ?? '',
-              stock: 0,
               description: '',
-              sizes: [],
+              size: 'One Size',
               imageUrl: '',
               isGoosebumps: false,
             }
@@ -172,15 +165,14 @@ export default function ProductFormDialog({
   }
 
   const handleSubmit = form.handleSubmit((data) => {
-    const cleaned: Omit<Product, 'id'> = {
+    const cleaned: Omit<Product, 'id' | 'stock'> = {
       name: data.name,
       price: data.price,
-      stock: data.stock,
       isGoosebumps: data.isGoosebumps,
       categoryId: data.isGoosebumps || !data.categoryId ? null : data.categoryId,
       description: data.description || undefined,
       imageUrl: data.imageUrl || undefined,
-      sizes: data.sizes?.length ? data.sizes : undefined,
+      size: data.size,
     };
     onSubmit(cleaned);
   });
@@ -236,23 +228,24 @@ export default function ProductFormDialog({
 
               <FormField
                 control={form.control}
-                name="stock"
+                name="size"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Stock</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min="0"
-                        value={Number.isNaN(field.value) ? '' : field.value}
-                        onChange={(e) => {
-                          const v = e.target.valueAsNumber;
-                          field.onChange(Number.isNaN(v) ? undefined : v);
-                        }}
-                        onBlur={field.onBlur}
-                        name={field.name}
-                      />
-                    </FormControl>
+                    <FormLabel>Size</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select size" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {SIZE_OPTIONS.map((size) => (
+                          <SelectItem key={size} value={size}>
+                            {size}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -313,37 +306,6 @@ export default function ProductFormDialog({
                   <FormControl>
                     <Textarea placeholder="Product description (optional)" rows={3} {...field} />
                   </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="sizes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Sizes</FormLabel>
-                  <div className="flex flex-wrap gap-3 pt-1">
-                    {ALL_SIZES.map((size) => (
-                      <div key={size} className="flex items-center gap-1.5">
-                        <Checkbox
-                          id={`size-${size}`}
-                          checked={field.value?.includes(size) ?? false}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              field.onChange([...(field.value ?? []), size]);
-                            } else {
-                              field.onChange((field.value ?? []).filter((s) => s !== size));
-                            }
-                          }}
-                        />
-                        <Label htmlFor={`size-${size}`} className="text-sm font-normal cursor-pointer">
-                          {size}
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
                   <FormMessage />
                 </FormItem>
               )}

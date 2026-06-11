@@ -20,7 +20,7 @@ export interface Product {
   categoryId: string | null;
   stock: number;
   description?: string;
-  sizes?: string[];
+  size: string;
   imageUrl?: string;
   isGoosebumps: boolean;
 }

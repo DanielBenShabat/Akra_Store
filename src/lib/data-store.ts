@@ -30,7 +30,7 @@ function toProduct(row: DbProduct): Product {
     categoryId: row.category_id ?? null,
     stock: row.stock,
     description: row.description ?? undefined,
-    sizes: row.sizes ?? undefined,
+    size: row.sizes && row.sizes.length > 0 ? row.sizes[0] : 'One Size',
     imageUrl: row.image_url ?? undefined,
     isGoosebumps: row.is_goosebumps,
   };
@@ -51,7 +51,7 @@ function toRow(data: Partial<Omit<Product, 'id'>>): Record<string, unknown> {
   if ('price' in data) row.price = data.price;
   if ('stock' in data) row.stock = data.stock;
   if ('description' in data) row.description = data.description ?? null;
-  if ('sizes' in data) row.sizes = data.sizes ?? null;
+  if ('size' in data) row.sizes = data.size ? [data.size] : null;
   if ('imageUrl' in data) row.image_url = data.imageUrl ?? null;
   if ('categoryId' in data) row.category_id = data.categoryId ?? null;
   if ('isGoosebumps' in data) row.is_goosebumps = data.isGoosebumps;
@@ -85,10 +85,12 @@ export async function getProductById(id: string): Promise<Product | undefined> {
   return data ? toProduct(data as DbProduct) : undefined;
 }
 
-export async function createProduct(data: Omit<Product, 'id'>): Promise<Product> {
+export async function createProduct(
+  data: Omit<Product, 'id' | 'stock'>,
+): Promise<Product> {
   const { data: created, error } = await supabase
     .from('products')
-    .insert(toRow(data))
+    .insert(toRow({ ...data, stock: 1 }))
     .select()
     .single();
   if (error) throw new Error(error.message);

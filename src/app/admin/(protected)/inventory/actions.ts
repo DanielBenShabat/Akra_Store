@@ -5,7 +5,7 @@ import { createProduct, updateProduct, deleteProduct } from '@/lib/data-store';
 import { supabase } from '@/lib/supabase';
 import type { Product } from '@/types';
 
-type ProductFormValues = Omit<Product, 'id'>;
+type ProductFormValues = Omit<Product, 'id' | 'stock'>;
 type ActionResult = { success: boolean; error?: string };
 
 export async function createProductAction(data: ProductFormValues): Promise<ActionResult> {
