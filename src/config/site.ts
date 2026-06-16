@@ -30,7 +30,18 @@ export const siteConfig: SiteConfig = {
   },
 
   shipping: {
-    flatFee: 29.9,
     freeThreshold: 400,
+    methods: {
+      home: {
+        label: 'Home Delivery',
+        description: 'Courier to your address · free over 400 NIS',
+        flatFee: 29.9,
+      },
+      pickup: {
+        label: 'Pick-up Point',
+        description: 'Collect from a nearby pick-up point',
+        flatFee: 15,
+      },
+    },
   },
 };

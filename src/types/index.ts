@@ -25,6 +25,9 @@ export interface Product {
   isGoosebumps: boolean;
 }
 
+/** How an order is fulfilled. `home` = courier to address, `pickup` = pick-up point. */
+export type ShippingMethod = 'home' | 'pickup';
+
 export interface Order {
   id: string;
   firstName: string;
@@ -34,6 +37,8 @@ export interface Order {
   address: string;
   city: string;
   subtotal: number;
+  shipping: number;
+  shippingMethod: ShippingMethod;
   total: number;
   status: 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
   createdAt: string;
@@ -70,7 +75,16 @@ export interface SiteConfig {
     symbol: string;
   };
   shipping: {
-    flatFee: number;
+    /** Subtotal at which `home` delivery becomes free. */
     freeThreshold: number;
+    /** Per-method configuration. `flatFee` is the base rate used by server-side pricing. */
+    methods: Record<
+      ShippingMethod,
+      {
+        label: string;
+        description: string;
+        flatFee: number;
+      }
+    >;
   };
 }

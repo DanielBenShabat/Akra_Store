@@ -1,7 +1,7 @@
 import 'server-only';
 import { supabase } from './supabase';
-import { calculateTotals } from './pricing';
-import type { Product, Category, ArchiveItem } from '@/types';
+import { calculateTotals, type OrderTotals } from './pricing';
+import type { Product, Category, ArchiveItem, ShippingMethod } from '@/types';
 
 type DbProduct = {
   id: string;
@@ -276,6 +276,7 @@ export interface OrderRow {
   id: string;
   first_name: string;
   last_name: string;
+  shipping_method: ShippingMethod;
   total: number;
   status: string;
   created_at: string;
@@ -284,7 +285,7 @@ export interface OrderRow {
 export async function getOrders(): Promise<OrderRow[]> {
   const { data, error } = await supabase
     .from('orders')
-    .select('id, first_name, last_name, total, status, created_at')
+    .select('id, first_name, last_name, shipping_method, total, status, created_at')
     .order('created_at', { ascending: false });
   if (error) throw new Error(error.message);
   return (data ?? []) as OrderRow[];
@@ -303,7 +304,27 @@ export interface CreatePendingOrderInput {
   productId: string;
   size: string;
   quantity: number;
+  shippingMethod: ShippingMethod;
   shipping: ShippingDetails;
+}
+
+/**
+ * Recalculate order totals from the authoritative product price for a given
+ * shipping method. Used by the checkout UI to quote totals in real time
+ * without ever trusting client-supplied prices.
+ */
+export async function quoteOrderTotals(
+  productId: string,
+  method: ShippingMethod,
+): Promise<OrderTotals> {
+  const { data: product, error } = await supabase
+    .from('products')
+    .select('price')
+    .eq('id', productId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!product) throw new Error('This product is no longer available');
+  return calculateTotals(product.price, method);
 }
 
 export async function createPendingOrder(
@@ -319,7 +340,7 @@ export async function createPendingOrder(
   if (product.stock < input.quantity) throw new Error(`${product.name} is out of stock`);
 
   const subtotal = product.price * input.quantity;
-  const totals = calculateTotals(subtotal);
+  const totals = calculateTotals(subtotal, input.shippingMethod);
 
   const { data: order, error: orderError } = await supabase
     .from('orders')
@@ -331,6 +352,8 @@ export async function createPendingOrder(
       address: input.shipping.address,
       city: input.shipping.city,
       subtotal: totals.subtotal,
+      shipping: totals.shipping,
+      shipping_method: input.shippingMethod,
       total: totals.total,
       status: 'pending',
     })

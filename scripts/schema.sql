@@ -10,6 +10,12 @@ do $$ begin
 exception when duplicate_object then null;
 end $$;
 
+-- Shipping method chosen at checkout. `home` = courier, `pickup` = pick-up point.
+do $$ begin
+  create type shipping_method as enum ('home', 'pickup');
+exception when duplicate_object then null;
+end $$;
+
 create table if not exists categories (
   id            uuid primary key default gen_random_uuid(),
   name          text not null,
@@ -48,11 +54,13 @@ create table if not exists orders (
   email      text not null,
   phone      text not null,
   address    text not null,
-  city       text not null,
-  subtotal   numeric(10, 2) not null,
-  total      numeric(10, 2),
-  status     order_status not null default 'pending',
-  created_at timestamptz not null default now()
+  city            text not null,
+  subtotal        numeric(10, 2) not null,
+  shipping        numeric(10, 2) not null default 0,
+  shipping_method shipping_method not null default 'home',
+  total           numeric(10, 2),
+  status          order_status not null default 'pending',
+  created_at      timestamptz not null default now()
 );
 
 -- `product_id` mirrors the originating product but is not a foreign key in

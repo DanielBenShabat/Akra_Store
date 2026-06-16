@@ -21,7 +21,8 @@ export default async function CheckoutPage({ searchParams }: Props) {
   const product = await getProductById(productId);
   if (!product) notFound();
 
-  const totals = calculateTotals(product.price);
+  const defaultMethod = 'home' as const;
+  const totals = calculateTotals(product.price, defaultMethod);
   const symbol = siteConfig.currency.symbol;
 
   return (
@@ -53,6 +54,7 @@ export default async function CheckoutPage({ searchParams }: Props) {
           <CheckoutForm
             productId={product.id}
             size={size}
+            defaultMethod={defaultMethod}
             paymentFailed={error === 'payment_failed'}
             summary={{
               subtotal: totals.subtotal,

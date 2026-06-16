@@ -21,6 +21,11 @@ const statusVariant: Record<string, 'default' | 'secondary' | 'destructive' | 'o
   cancelled: 'destructive',
 };
 
+const shippingMethodLabel: Record<string, string> = {
+  home: 'Home Delivery',
+  pickup: 'Pick-up Point',
+};
+
 export default async function OrdersPage() {
   const orders = await getOrders();
 
@@ -39,6 +44,7 @@ export default async function OrdersPage() {
             <TableRow>
               <TableHead>Order</TableHead>
               <TableHead>Customer</TableHead>
+              <TableHead>Shipping</TableHead>
               <TableHead>Date</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Total</TableHead>
@@ -50,6 +56,9 @@ export default async function OrdersPage() {
                 <TableCell className="font-medium">#{order.id.slice(0, 8)}</TableCell>
                 <TableCell>
                   {order.first_name} {order.last_name}
+                </TableCell>
+                <TableCell>
+                  {shippingMethodLabel[order.shipping_method] ?? order.shipping_method}
                 </TableCell>
                 <TableCell>{new Date(order.created_at).toLocaleDateString()}</TableCell>
                 <TableCell>
