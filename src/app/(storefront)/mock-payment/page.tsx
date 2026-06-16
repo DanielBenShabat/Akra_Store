@@ -9,11 +9,11 @@ import { MockPaymentClient } from './MockPaymentClient';
 export const dynamic = 'force-dynamic';
 
 interface Props {
-  searchParams: Promise<{ orderId?: string; productId?: string; size?: string }>;
+  searchParams: Promise<{ orderId?: string; productId?: string }>;
 }
 
 export default async function MockPaymentPage({ searchParams }: Props) {
-  const { orderId, productId, size } = await searchParams;
+  const { orderId, productId } = await searchParams;
   if (!orderId) redirect('/');
 
   const order = await getOrderById(orderId);
@@ -40,7 +40,7 @@ export default async function MockPaymentPage({ searchParams }: Props) {
               </span>
             </div>
 
-            <MockPaymentClient orderId={orderId} productId={productId ?? ''} size={size ?? ''} />
+            <MockPaymentClient orderId={orderId} productId={productId ?? null} />
 
             <p className="text-badge text-muted-foreground text-center">
               Simulated gateway — no real payment is processed.

@@ -272,6 +272,13 @@ export async function getOrderById(id: string): Promise<OrderSummary | null> {
   return data ? (data as OrderSummary) : null;
 }
 
+export interface OrderRowItem {
+  name: string;
+  size: string;
+  price: number;
+  quantity: number;
+}
+
 export interface OrderRow {
   id: string;
   first_name: string;
@@ -280,15 +287,23 @@ export interface OrderRow {
   total: number;
   status: string;
   created_at: string;
+  items: OrderRowItem[];
 }
 
 export async function getOrders(): Promise<OrderRow[]> {
   const { data, error } = await supabase
     .from('orders')
-    .select('id, first_name, last_name, shipping_method, total, status, created_at')
+    .select(
+      'id, first_name, last_name, shipping_method, total, status, created_at, order_items(name, size, price, quantity)',
+    )
     .order('created_at', { ascending: false });
   if (error) throw new Error(error.message);
-  return (data ?? []) as OrderRow[];
+
+  type JoinedRow = Omit<OrderRow, 'items'> & { order_items: OrderRowItem[] | null };
+  return ((data ?? []) as JoinedRow[]).map(({ order_items, ...order }) => ({
+    ...order,
+    items: order_items ?? [],
+  }));
 }
 
 export interface ShippingDetails {
@@ -300,47 +315,68 @@ export interface ShippingDetails {
   city: string;
 }
 
-export interface CreatePendingOrderInput {
+export interface OrderLineInput {
   productId: string;
   size: string;
-  quantity: number;
+}
+
+export interface CreatePendingOrderInput {
+  items: OrderLineInput[];
   shippingMethod: ShippingMethod;
   shipping: ShippingDetails;
 }
 
+/** Unique product ids, preserving first-seen order (1-of-1: each appears once). */
+function uniqueProductIds(items: OrderLineInput[]): string[] {
+  return [...new Set(items.map((i) => i.productId))];
+}
+
 /**
- * Recalculate order totals from the authoritative product price for a given
+ * Recalculate order totals from the authoritative product prices for a given
  * shipping method. Used by the checkout UI to quote totals in real time
  * without ever trusting client-supplied prices.
  */
 export async function quoteOrderTotals(
-  productId: string,
+  productIds: string[],
   method: ShippingMethod,
 ): Promise<OrderTotals> {
-  const { data: product, error } = await supabase
-    .from('products')
-    .select('price')
-    .eq('id', productId)
-    .maybeSingle();
+  const ids = [...new Set(productIds)];
+  if (ids.length === 0) return { subtotal: 0, shipping: 0, total: 0 };
+
+  const { data, error } = await supabase.from('products').select('price').in('id', ids);
   if (error) throw new Error(error.message);
-  if (!product) throw new Error('This product is no longer available');
-  return calculateTotals(product.price, method);
+
+  const lines = (data ?? []).map((p) => ({ price: p.price as number, quantity: 1 }));
+  return calculateTotals(lines, method);
 }
 
 export async function createPendingOrder(
   input: CreatePendingOrderInput,
 ): Promise<{ orderId: string }> {
-  const { data: product, error: productError } = await supabase
+  const ids = uniqueProductIds(input.items);
+  if (ids.length === 0) throw new Error('Your cart is empty');
+
+  const { data: products, error: productsError } = await supabase
     .from('products')
     .select('id, name, price, stock')
-    .eq('id', input.productId)
-    .maybeSingle();
-  if (productError) throw new Error(productError.message);
-  if (!product) throw new Error('This product is no longer available');
-  if (product.stock < input.quantity) throw new Error(`${product.name} is out of stock`);
+    .in('id', ids);
+  if (productsError) throw new Error(productsError.message);
 
-  const subtotal = product.price * input.quantity;
-  const totals = calculateTotals(subtotal, input.shippingMethod);
+  // Validate every requested product exists and is still in stock.
+  const byId = new Map((products ?? []).map((p) => [p.id as string, p]));
+  for (const id of ids) {
+    const product = byId.get(id);
+    if (!product) throw new Error('One of your items is no longer available');
+    if (product.stock < 1) throw new Error(`${product.name} is sold out`);
+  }
+
+  // Map each requested line to its authoritative product (quantity always 1).
+  const sizeByProduct = new Map(input.items.map((i) => [i.productId, i.size]));
+  const lines = ids.map((id) => byId.get(id)!);
+  const totals = calculateTotals(
+    lines.map((p) => ({ price: p.price as number, quantity: 1 })),
+    input.shippingMethod,
+  );
 
   const { data: order, error: orderError } = await supabase
     .from('orders')
@@ -361,14 +397,17 @@ export async function createPendingOrder(
     .single();
   if (orderError || !order) throw new Error(orderError?.message ?? 'Failed to create order');
 
-  const { error: itemError } = await supabase.from('order_items').insert({
+  // One row per unique product (1-of-1 model → quantity 1 each).
+  const orderItems = lines.map((product) => ({
     order_id: order.id,
     product_id: product.id,
     name: product.name,
-    size: input.size,
+    size: sizeByProduct.get(product.id as string) ?? 'One Size',
     price: product.price,
-    quantity: input.quantity,
-  });
+    quantity: 1,
+  }));
+
+  const { error: itemError } = await supabase.from('order_items').insert(orderItems);
   if (itemError) throw new Error(itemError.message);
 
   return { orderId: order.id as string };

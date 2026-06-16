@@ -14,7 +14,8 @@ export function BuyNowButton({ product }: BuyNowButtonProps) {
 
   function handleBuyNow() {
     if (soldOut) return;
-    const params = new URLSearchParams({ productId: product.id, size: product.size });
+    // Fast lane: this single item goes straight to checkout, bypassing the cart.
+    const params = new URLSearchParams({ productId: product.id });
     router.push(`/checkout?${params.toString()}`);
   }
 

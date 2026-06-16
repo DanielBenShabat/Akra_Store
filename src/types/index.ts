@@ -28,6 +28,18 @@ export interface Product {
 /** How an order is fulfilled. `home` = courier to address, `pickup` = pick-up point. */
 export type ShippingMethod = 'home' | 'pickup';
 
+/**
+ * A line in the cart / checkout. Under the 1-of-1 model every entry is a unique
+ * product with an implicit quantity of 1, so there is no `quantity` field here.
+ */
+export interface CartItem {
+  productId: string;
+  name: string;
+  price: number;
+  size: string;
+  image: string | null;
+}
+
 export interface Order {
   id: string;
   firstName: string;

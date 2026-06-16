@@ -3,7 +3,7 @@
 import type { Product } from '@/types';
 import { formatPrice } from '@/lib/utils';
 import { siteConfig } from '@/config/site';
-import { BuyNowButton } from './BuyNowButton';
+import { ProductActions } from './ProductActions';
 
 interface ProductInfoProps {
   product: Product;
@@ -31,7 +31,7 @@ export function ProductInfo({ product }: ProductInfoProps) {
         Size: <span className="font-medium text-foreground">{product.size}</span>
       </p>
 
-      <BuyNowButton product={product} />
+      <ProductActions product={product} />
     </div>
   );
 }

@@ -5,9 +5,13 @@ import { createPendingOrder, quoteOrderTotals } from '@/lib/data-store';
 
 const shippingMethodSchema = z.enum(['home', 'pickup']);
 
-const inputSchema = z.object({
+const lineItemSchema = z.object({
   productId: z.string().min(1),
   size: z.string().min(1),
+});
+
+const inputSchema = z.object({
+  items: z.array(lineItemSchema).min(1),
   shippingMethod: shippingMethodSchema,
   shipping: z.object({
     firstName: z.string().min(1),
@@ -32,9 +36,7 @@ export async function createPendingOrderAction(
 
   try {
     const { orderId } = await createPendingOrder({
-      productId: parsed.data.productId,
-      size: parsed.data.size,
-      quantity: 1,
+      items: parsed.data.items,
       shippingMethod: parsed.data.shippingMethod,
       shipping: parsed.data.shipping,
     });
@@ -45,7 +47,7 @@ export async function createPendingOrderAction(
 }
 
 const quoteSchema = z.object({
-  productId: z.string().min(1),
+  productIds: z.array(z.string().min(1)).min(1),
   shippingMethod: shippingMethodSchema,
 });
 
@@ -57,8 +59,9 @@ export interface QuoteOrderResult {
 }
 
 /**
- * Server-side re-calculation of totals for the selected shipping method.
- * The client supplies only the method; all pricing stays on the server.
+ * Server-side re-calculation of totals for the given items + shipping method.
+ * The client supplies only product ids and the method; all pricing stays on
+ * the server, sourced from authoritative product prices.
  */
 export async function quoteOrderAction(
   input: z.infer<typeof quoteSchema>,
@@ -69,7 +72,7 @@ export async function quoteOrderAction(
   }
 
   try {
-    const totals = await quoteOrderTotals(parsed.data.productId, parsed.data.shippingMethod);
+    const totals = await quoteOrderTotals(parsed.data.productIds, parsed.data.shippingMethod);
     return totals;
   } catch (e) {
     return {

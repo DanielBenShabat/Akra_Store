@@ -1,10 +1,14 @@
 'use client';
 
-import { Menu } from 'lucide-react';
+import { Menu, ShoppingBag } from 'lucide-react';
 import { useNav } from './NavContext';
+import { useCartStore, useCartHydrated } from '@/lib/cart-store';
 
 export function TopBar() {
   const { openNav } = useNav();
+  const hydrated = useCartHydrated();
+  const itemCount = useCartStore((s) => s.items.length);
+  const openCart = useCartStore((s) => s.openCart);
 
   return (
     <div className="h-topbar border-b border-border">
@@ -25,7 +29,20 @@ export function TopBar() {
           </span>
         </div>
 
-        <div className="w-11" aria-hidden="true" />
+        <button
+          type="button"
+          aria-label={`Open cart${hydrated && itemCount > 0 ? `, ${itemCount} items` : ''}`}
+          onClick={openCart}
+          className="relative p-3 -mr-3 text-foreground hover:text-muted-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground rounded-sm"
+          style={{ touchAction: 'manipulation', cursor: 'pointer' }}
+        >
+          <ShoppingBag size={20} strokeWidth={1.5} />
+          {hydrated && itemCount > 0 && (
+            <span className="absolute top-1 right-1 min-w-4 h-4 px-1 flex items-center justify-center rounded-full bg-foreground text-on-dark text-[10px] font-bold leading-none">
+              {itemCount}
+            </span>
+          )}
+        </button>
       </div>
     </div>
   );

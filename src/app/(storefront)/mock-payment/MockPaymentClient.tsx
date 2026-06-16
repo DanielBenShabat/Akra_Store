@@ -7,11 +7,11 @@ import { updateOrderStatusAction } from './actions';
 
 interface Props {
   orderId: string;
-  productId: string;
-  size: string;
+  /** Set only for the "Buy Now" fast lane, so a failed payment returns to that item. */
+  productId: string | null;
 }
 
-export function MockPaymentClient({ orderId, productId, size }: Props) {
+export function MockPaymentClient({ orderId, productId }: Props) {
   const router = useRouter();
   const [pending, setPending] = useState<'paid' | 'failed' | null>(null);
 
@@ -30,7 +30,10 @@ export function MockPaymentClient({ orderId, productId, size }: Props) {
       return;
     }
 
-    const params = new URLSearchParams({ productId, size, error: 'payment_failed' });
+    // Cart-mode failures return to the cart-driven checkout; Buy Now failures
+    // return to the same single item via its productId.
+    const params = new URLSearchParams({ error: 'payment_failed' });
+    if (productId) params.set('productId', productId);
     router.push(`/checkout?${params.toString()}`);
   }
 

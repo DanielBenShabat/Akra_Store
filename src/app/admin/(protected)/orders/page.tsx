@@ -44,6 +44,7 @@ export default async function OrdersPage() {
             <TableRow>
               <TableHead>Order</TableHead>
               <TableHead>Customer</TableHead>
+              <TableHead>Items</TableHead>
               <TableHead>Shipping</TableHead>
               <TableHead>Date</TableHead>
               <TableHead>Status</TableHead>
@@ -56,6 +57,20 @@ export default async function OrdersPage() {
                 <TableCell className="font-medium">#{order.id.slice(0, 8)}</TableCell>
                 <TableCell>
                   {order.first_name} {order.last_name}
+                </TableCell>
+                <TableCell>
+                  {order.items.length === 0 ? (
+                    <span className="text-muted-foreground">—</span>
+                  ) : (
+                    <ul className="space-y-0.5">
+                      {order.items.map((item, i) => (
+                        <li key={i} className="text-sm">
+                          {item.name}
+                          <span className="text-muted-foreground"> · {item.size}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </TableCell>
                 <TableCell>
                   {shippingMethodLabel[order.shipping_method] ?? order.shipping_method}

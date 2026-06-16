@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -9,7 +10,8 @@ import { toast } from 'sonner';
 import Link from 'next/link';
 import { formatPrice } from '@/lib/utils';
 import { siteConfig } from '@/config/site';
-import type { ShippingMethod } from '@/types';
+import { useCartStore, cartSubtotal } from '@/lib/cart-store';
+import type { CartItem, ShippingMethod } from '@/types';
 import { createPendingOrderAction, quoteOrderAction } from './actions';
 
 const checkoutSchema = z.object({
@@ -49,24 +51,35 @@ const inputClass =
   'w-full border border-border bg-background px-4 py-3 text-nav focus:outline-none focus:border-foreground transition-colors placeholder:text-muted-foreground';
 
 interface Props {
-  productId: string;
-  size: string;
-  defaultMethod: ShippingMethod;
+  items: CartItem[];
+  symbol: string;
   paymentFailed: boolean;
-  summary: { subtotal: number; shipping: number; total: number; symbol: string };
+  clearCartOnSuccess: boolean;
+  buyNowProductId: string | null;
 }
 
-export function CheckoutForm({ productId, size, defaultMethod, paymentFailed, summary }: Props) {
+export function CheckoutForm({
+  items,
+  symbol,
+  paymentFailed,
+  clearCartOnSuccess,
+  buyNowProductId,
+}: Props) {
   const router = useRouter();
+  const clearCart = useCartStore((s) => s.clear);
 
-  // Server is the single source of truth for totals; the page provides the
-  // initial quote for `defaultMethod` and we re-quote on every method change.
+  const productIds = items.map((i) => i.productId);
+
+  // Server is the single source of truth for totals; we seed display with a
+  // client-side subtotal estimate, then quote from the server on mount and on
+  // every shipping-method change.
+  const estimatedSubtotal = cartSubtotal(items);
   const [totals, setTotals] = useState({
-    subtotal: summary.subtotal,
-    shipping: summary.shipping,
-    total: summary.total,
+    subtotal: estimatedSubtotal,
+    shipping: 0,
+    total: estimatedSubtotal,
   });
-  const [quoting, setQuoting] = useState(false);
+  const [quoting, setQuoting] = useState(true);
 
   useEffect(() => {
     if (paymentFailed) toast.error('Payment was not completed. Please try again.');
@@ -79,22 +92,16 @@ export function CheckoutForm({ productId, size, defaultMethod, paymentFailed, su
     formState: { errors, isSubmitting },
   } = useForm<CheckoutFormValues>({
     resolver: zodResolver(checkoutSchema),
-    defaultValues: { shippingMethod: defaultMethod },
+    defaultValues: { shippingMethod: 'home' },
   });
 
   const selectedMethod = watch('shippingMethod');
+  const productIdsKey = productIds.join(',');
 
-  // Skip the first run: the page already supplied the correct quote for `defaultMethod`.
-  const isInitialQuote = useRef(true);
   useEffect(() => {
-    if (isInitialQuote.current) {
-      isInitialQuote.current = false;
-      return;
-    }
-
     let active = true;
     setQuoting(true);
-    quoteOrderAction({ productId, shippingMethod: selectedMethod })
+    quoteOrderAction({ productIds: productIdsKey.split(','), shippingMethod: selectedMethod })
       .then((quote) => {
         if (!active) return;
         if (quote.error) {
@@ -110,23 +117,55 @@ export function CheckoutForm({ productId, size, defaultMethod, paymentFailed, su
     return () => {
       active = false;
     };
-  }, [selectedMethod, productId]);
+  }, [selectedMethod, productIdsKey]);
 
   async function onSubmit(data: CheckoutFormValues) {
     const { shippingMethod, ...shipping } = data;
-    const result = await createPendingOrderAction({ productId, size, shippingMethod, shipping });
+    const result = await createPendingOrderAction({
+      items: items.map((i) => ({ productId: i.productId, size: i.size })),
+      shippingMethod,
+      shipping,
+    });
 
     if (result.error || !result.orderId) {
       toast.error(result.error ?? 'Something went wrong');
       return;
     }
 
-    const params = new URLSearchParams({ orderId: result.orderId, productId, size });
+    if (clearCartOnSuccess) clearCart();
+
+    const params = new URLSearchParams({ orderId: result.orderId });
+    if (buyNowProductId) params.set('productId', buyNowProductId);
     router.push(`/mock-payment?${params.toString()}`);
   }
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
+      <p className="text-nav font-bold uppercase tracking-nav border-b border-border pb-3">
+        Order Summary
+      </p>
+
+      <ul className="flex flex-col gap-3">
+        {items.map((item) => (
+          <li key={item.productId} className="border border-border p-3 flex gap-3">
+            <div className="relative w-16 h-16 shrink-0 bg-border overflow-hidden">
+              {item.image ? (
+                <Image src={item.image} alt={item.name} fill className="object-cover" sizes="64px" />
+              ) : (
+                <div className="w-full h-full bg-border" aria-hidden="true" />
+              )}
+            </div>
+            <div className="flex-1 min-w-0 flex flex-col justify-center">
+              <p className="text-nav font-medium leading-snug truncate">{item.name}</p>
+              <p className="text-badge text-muted-foreground">Size: {item.size} · Qty: 1</p>
+            </div>
+            <span className="text-nav font-bold self-center whitespace-nowrap">
+              {formatPrice(item.price, symbol)}
+            </span>
+          </li>
+        ))}
+      </ul>
+
       <p className="text-nav font-bold uppercase tracking-nav border-b border-border pb-3">
         Shipping Details
       </p>
@@ -192,21 +231,17 @@ export function CheckoutForm({ productId, size, defaultMethod, paymentFailed, su
       <div className="border-t border-border pt-4 flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <span className="text-nav text-muted-foreground uppercase tracking-nav">Subtotal</span>
-          <span className="text-nav">{formatPrice(totals.subtotal, summary.symbol)}</span>
+          <span className="text-nav">{formatPrice(totals.subtotal, symbol)}</span>
         </div>
         <div className="flex items-center justify-between">
           <span className="text-nav text-muted-foreground uppercase tracking-nav">Shipping</span>
           <span className="text-nav">
-            {quoting
-              ? '…'
-              : totals.shipping === 0
-                ? 'Free'
-                : formatPrice(totals.shipping, summary.symbol)}
+            {quoting ? '…' : totals.shipping === 0 ? 'Free' : formatPrice(totals.shipping, symbol)}
           </span>
         </div>
         <div className="flex items-center justify-between border-t border-border pt-2 mt-1">
           <span className="text-nav font-bold uppercase tracking-nav">Total</span>
-          <span className="text-price font-bold">{formatPrice(totals.total, summary.symbol)}</span>
+          <span className="text-price font-bold">{formatPrice(totals.total, symbol)}</span>
         </div>
       </div>
 
@@ -215,7 +250,7 @@ export function CheckoutForm({ productId, size, defaultMethod, paymentFailed, su
         disabled={isSubmitting || quoting}
         className="w-full bg-foreground text-on-dark text-nav font-medium uppercase tracking-nav py-4 hover:bg-foreground/90 transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2"
       >
-        {isSubmitting ? 'Processing…' : `Continue to Payment · ${formatPrice(totals.total, summary.symbol)}`}
+        {isSubmitting ? 'Processing…' : `Continue to Payment · ${formatPrice(totals.total, symbol)}`}
       </button>
 
       <Link
