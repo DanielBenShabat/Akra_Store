@@ -8,7 +8,6 @@ import { CheckoutForm } from './CheckoutForm';
 interface Props {
   mode: 'buynow' | 'cart';
   buyNowItem: CartItem | null;
-  buyNowProductId: string | null;
   symbol: string;
   paymentFailed: boolean;
 }
@@ -28,13 +27,7 @@ function EmptyState() {
   );
 }
 
-export function CheckoutClient({
-  mode,
-  buyNowItem,
-  buyNowProductId,
-  symbol,
-  paymentFailed,
-}: Props) {
+export function CheckoutClient({ mode, buyNowItem, symbol, paymentFailed }: Props) {
   const hydrated = useCartHydrated();
   const cartItems = useCartStore((s) => s.items);
 
@@ -49,11 +42,6 @@ export function CheckoutClient({
   if (items.length === 0) return <EmptyState />;
 
   return (
-    <CheckoutForm
-      items={items}
-      symbol={symbol}
-      paymentFailed={paymentFailed}
-      buyNowProductId={buyNowProductId}
-    />
+    <CheckoutForm items={items} symbol={symbol} paymentFailed={paymentFailed} />
   );
 }

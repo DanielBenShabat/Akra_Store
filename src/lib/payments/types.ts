@@ -3,6 +3,9 @@ export interface PaymentRequest {
   amount: number;
   currency: string;
   email: string;
+  fullName?: string;
+  phone?: string;
+  description?: string;
 }
 
 export interface PaymentResult {

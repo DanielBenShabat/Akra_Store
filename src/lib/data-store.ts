@@ -1,6 +1,8 @@
 import 'server-only';
 import { supabase } from './supabase';
 import { calculateTotals, type OrderTotals } from './pricing';
+import { getPaymentProvider } from '@/lib/payments';
+import { siteConfig } from '@/config/site';
 import type { Product, Category, ArchiveItem, ShippingMethod } from '@/types';
 
 type DbProduct = {
@@ -260,16 +262,27 @@ export interface OrderSummary {
   id: string;
   total: number;
   status: string;
+  /** Product ids on the order — used to purge exactly these from the client cart. */
+  productIds: string[];
 }
 
 export async function getOrderById(id: string): Promise<OrderSummary | null> {
   const { data, error } = await supabase
     .from('orders')
-    .select('id, total, status')
+    .select('id, total, status, order_items(product_id)')
     .eq('id', id)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  return data ? (data as OrderSummary) : null;
+  if (!data) return null;
+
+  type Row = { id: string; total: number; status: string; order_items: { product_id: string }[] | null };
+  const row = data as Row;
+  return {
+    id: row.id,
+    total: row.total,
+    status: row.status,
+    productIds: (row.order_items ?? []).map((i) => i.product_id),
+  };
 }
 
 export interface OrderRowItem {
@@ -352,7 +365,7 @@ export async function quoteOrderTotals(
 
 export async function createPendingOrder(
   input: CreatePendingOrderInput,
-): Promise<{ orderId: string }> {
+): Promise<{ orderId: string; redirectUrl: string }> {
   const ids = uniqueProductIds(input.items);
   if (ids.length === 0) throw new Error('Your cart is empty');
 
@@ -410,45 +423,86 @@ export async function createPendingOrder(
   const { error: itemError } = await supabase.from('order_items').insert(orderItems);
   if (itemError) throw new Error(itemError.message);
 
-  return { orderId: order.id as string };
+  const orderId = order.id as string;
+
+  // Initialize payment with the gateway. The provider decides the flow:
+  //  - 'pending' + redirectUrl → hosted checkout; webhook confirms later.
+  //  - 'paid' (trusted simulated provider) → confirm inline, server-side.
+  const provider = getPaymentProvider();
+  let payment;
+  try {
+    payment = await provider.createPayment({
+      orderId,
+      amount: totals.total,
+      currency: siteConfig.currency.code,
+      email: input.shipping.email,
+      fullName: `${input.shipping.firstName} ${input.shipping.lastName}`.trim(),
+      phone: input.shipping.phone,
+    });
+  } catch (e) {
+    await supabase.from('orders').update({ status: 'cancelled' }).eq('id', orderId);
+    throw new Error(e instanceof Error ? e.message : 'Could not initialize payment');
+  }
+
+  await supabase
+    .from('orders')
+    .update({ payment_reference: payment.reference, payment_provider: provider.name })
+    .eq('id', orderId);
+
+  if (payment.status === 'failed') {
+    await supabase.from('orders').update({ status: 'cancelled' }).eq('id', orderId);
+    throw new Error('Payment could not be started. Please try again.');
+  }
+
+  if (payment.status === 'paid') {
+    // Synchronous, server-trusted capture (simulated provider): confirm now.
+    const result = await confirmPaidOrder(orderId);
+    if (result === 'insufficient_stock') {
+      throw new Error('One or more items just sold out. Your order was not completed.');
+    }
+    return { orderId, redirectUrl: `${siteConfig.url}/checkout/success?order=${orderId}` };
+  }
+
+  // Hosted redirect flow (e.g. Grow): send the browser to the gateway.
+  if (!payment.redirectUrl) {
+    throw new Error('Payment provider did not return a redirect URL');
+  }
+  return { orderId, redirectUrl: payment.redirectUrl };
 }
 
-export async function updateOrderStatus(
-  orderId: string,
-  outcome: 'paid' | 'failed',
-): Promise<void> {
-  const { data: order, error: fetchError } = await supabase
+export type ConfirmResult = 'confirmed' | 'already' | 'not_found' | 'insufficient_stock';
+
+/**
+ * Confirm a paid order: atomically claim stock for every line item and flip the
+ * order to 'confirmed' via the `confirm_order` RPC. Server-only — invoked by the
+ * trusted simulated capture path and by the payment webhook, never by a client.
+ * Idempotent: a repeat call on a confirmed order returns 'already'.
+ */
+export async function confirmPaidOrder(orderId: string): Promise<ConfirmResult> {
+  const { data, error } = await supabase.rpc('confirm_order', { p_order_id: orderId });
+  if (error) throw new Error(error.message);
+
+  const result = data as ConfirmResult;
+  if (result === 'insufficient_stock') {
+    // No partial decrement happened (RPC rolled back); cancel the unfulfillable order.
+    await supabase.from('orders').update({ status: 'cancelled' }).eq('id', orderId);
+  }
+  return result;
+}
+
+/** Cancel an order that is still pending (e.g. payment failed/abandoned). No-op otherwise. */
+export async function cancelPendingOrder(orderId: string): Promise<void> {
+  const { data: order, error } = await supabase
     .from('orders')
-    .select('id, status')
+    .select('status')
     .eq('id', orderId)
     .maybeSingle();
-  if (fetchError) throw new Error(fetchError.message);
-  if (!order) throw new Error('Order not found');
-  if (order.status !== 'pending') return;
+  if (error) throw new Error(error.message);
+  if (!order || order.status !== 'pending') return;
 
-  if (outcome === 'failed') {
-    const { error } = await supabase
-      .from('orders')
-      .update({ status: 'cancelled' })
-      .eq('id', orderId);
-    if (error) throw new Error(error.message);
-    return;
-  }
-
-  // Paid: atomically claim stock for every line item and flip to 'confirmed'.
-  // confirm_order decrements all items and confirms in one transaction, rolling
-  // back entirely if any 1-of-1 item was already sold (preventing a double-sale).
-  const { data: result, error: confirmError } = await supabase.rpc('confirm_order', {
-    p_order_id: orderId,
-  });
-  if (confirmError) throw new Error(confirmError.message);
-
-  if (result === 'insufficient_stock') {
-    // Stock for one or more items was claimed by another order first. The order
-    // stays unconfirmed (no partial decrement happened); cancel it and surface.
-    await supabase.from('orders').update({ status: 'cancelled' }).eq('id', orderId);
-    throw new Error('One or more items just sold out. Your payment was not completed.');
-  }
-  if (result === 'not_found') throw new Error('Order not found');
-  // 'confirmed' (just confirmed) or 'already' (idempotent re-run) → success.
+  const { error: updateError } = await supabase
+    .from('orders')
+    .update({ status: 'cancelled' })
+    .eq('id', orderId);
+  if (updateError) throw new Error(updateError.message);
 }

@@ -24,7 +24,8 @@ const inputSchema = z.object({
 });
 
 export interface CreatePendingOrderResult {
-  orderId?: string;
+  /** Where the browser should go next: the gateway's hosted page, or our success page. */
+  redirectUrl?: string;
   error?: string;
 }
 
@@ -35,12 +36,12 @@ export async function createPendingOrderAction(
   if (!parsed.success) return { error: 'Invalid order details' };
 
   try {
-    const { orderId } = await createPendingOrder({
+    const { redirectUrl } = await createPendingOrder({
       items: parsed.data.items,
       shippingMethod: parsed.data.shippingMethod,
       shipping: parsed.data.shipping,
     });
-    return { orderId };
+    return { redirectUrl };
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Failed to create order' };
   }

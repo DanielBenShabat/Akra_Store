@@ -40,7 +40,6 @@ export default async function CheckoutPage({ searchParams }: Props) {
           <CheckoutClient
             mode={productId ? 'buynow' : 'cart'}
             buyNowItem={buyNowItem}
-            buyNowProductId={productId ?? null}
             symbol={symbol}
             paymentFailed={error === 'payment_failed'}
           />

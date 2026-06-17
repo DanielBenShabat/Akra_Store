@@ -55,13 +55,19 @@ create table if not exists orders (
   phone      text not null,
   address    text not null,
   city            text not null,
-  subtotal        numeric(10, 2) not null,
-  shipping        numeric(10, 2) not null default 0,
-  shipping_method shipping_method not null default 'home',
-  total           numeric(10, 2),
-  status          order_status not null default 'pending',
-  created_at      timestamptz not null default now()
+  subtotal          numeric(10, 2) not null,
+  shipping          numeric(10, 2) not null default 0,
+  shipping_method   shipping_method not null default 'home',
+  total             numeric(10, 2),
+  status            order_status not null default 'pending',
+  -- External gateway reference (e.g. Grow process id). Unique → webhook idempotency.
+  payment_reference text,
+  payment_provider  text,
+  created_at        timestamptz not null default now()
 );
+
+-- Multiple NULLs are allowed; the uniqueness only bites once a reference is set.
+create unique index if not exists orders_payment_reference_key on orders(payment_reference);
 
 -- `product_id` mirrors the originating product but is not a foreign key in
 -- production, so a product can be deleted without affecting historical orders.

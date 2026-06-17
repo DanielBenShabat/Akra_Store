@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -54,12 +53,9 @@ interface Props {
   items: CartItem[];
   symbol: string;
   paymentFailed: boolean;
-  buyNowProductId: string | null;
 }
 
-export function CheckoutForm({ items, symbol, paymentFailed, buyNowProductId }: Props) {
-  const router = useRouter();
-
+export function CheckoutForm({ items, symbol, paymentFailed }: Props) {
   const productIds = items.map((i) => i.productId);
 
   // Server is the single source of truth for totals; we seed display with a
@@ -119,17 +115,16 @@ export function CheckoutForm({ items, symbol, paymentFailed, buyNowProductId }: 
       shipping,
     });
 
-    if (result.error || !result.orderId) {
+    if (result.error || !result.redirectUrl) {
       toast.error(result.error ?? 'Something went wrong');
       return;
     }
 
-    // Note: the cart is intentionally NOT cleared here. The order is only
-    // 'pending' at this point — clearing happens on confirmed payment in
-    // MockPaymentClient, so a failed payment leaves the cart intact for retry.
-    const params = new URLSearchParams({ orderId: result.orderId });
-    if (buyNowProductId) params.set('productId', buyNowProductId);
-    router.push(`/mock-payment?${params.toString()}`);
+    // The cart is intentionally NOT cleared here — the order is only 'pending'.
+    // Confirmation (and the cart purge on the success page) happens after the
+    // gateway captures payment, so an abandoned/failed payment keeps the cart.
+    // Hand the browser to the provider's next URL (hosted gateway, or success).
+    window.location.assign(result.redirectUrl);
   }
 
   return (
