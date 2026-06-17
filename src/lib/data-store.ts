@@ -2,6 +2,7 @@ import 'server-only';
 import { supabase } from './supabase';
 import { calculateTotals, type OrderTotals } from './pricing';
 import { getPaymentProvider } from '@/lib/payments';
+import { sendOrderConfirmationEmail } from '@/lib/email';
 import { siteConfig } from '@/config/site';
 import type { Product, Category, ArchiveItem, ShippingMethod } from '@/types';
 
@@ -494,7 +495,48 @@ export async function confirmPaidOrder(orderId: string): Promise<ConfirmResult> 
     // No partial decrement happened (RPC rolled back); cancel the unfulfillable order.
     await supabase.from('orders').update({ status: 'cancelled' }).eq('id', orderId);
   }
+
+  // Fire the confirmation receipt exactly once: only on the pending→confirmed
+  // transition. A duplicate webhook returns 'already' and sends nothing. Email
+  // failures are logged but never block confirmation (order is already saved).
+  if (result === 'confirmed') {
+    try {
+      const receipt = await getOrderReceipt(orderId);
+      if (receipt) await sendOrderConfirmationEmail(receipt);
+    } catch (e) {
+      console.error('[order] confirmation email failed', e);
+    }
+  }
+
   return result;
+}
+
+interface OrderReceiptRow {
+  id: string;
+  email: string;
+  first_name: string;
+  total: number;
+  order_items: { name: string; size: string; price: number }[] | null;
+}
+
+/** Fetch the data needed for a confirmation receipt email. */
+async function getOrderReceipt(orderId: string) {
+  const { data, error } = await supabase
+    .from('orders')
+    .select('id, email, first_name, total, order_items(name, size, price)')
+    .eq('id', orderId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) return null;
+
+  const row = data as OrderReceiptRow;
+  return {
+    orderId: row.id,
+    email: row.email,
+    firstName: row.first_name,
+    total: row.total,
+    items: row.order_items ?? [],
+  };
 }
 
 /** Cancel an order that is still pending (e.g. payment failed/abandoned). No-op otherwise. */

@@ -4,13 +4,12 @@ import { redirect } from 'next/navigation';
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import AdminHeader from '@/components/admin/AdminHeader';
 import { Toaster } from '@/components/admin-ui/sonner';
+import { ADMIN_COOKIE, verifyAdminSessionToken } from '@/lib/admin-session';
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
-  const cookieStore = await cookies();
-  const session = cookieStore.get('admin_session');
-  const secret = process.env.ADMIN_SESSION_SECRET;
+  const token = (await cookies()).get(ADMIN_COOKIE)?.value;
 
-  if (!session || session.value !== secret) {
+  if (!(await verifyAdminSessionToken(token))) {
     redirect('/admin/login');
   }
 

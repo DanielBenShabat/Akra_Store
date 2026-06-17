@@ -1,18 +1,20 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
+import { ADMIN_COOKIE, verifyAdminSessionToken } from '@/lib/admin-session';
 
 export const config = {
   matcher: ['/admin/:path*'],
 };
 
-export function middleware(request: NextRequest) {
-  const session = request.cookies.get('admin_session');
+export async function middleware(request: NextRequest) {
+  const token = request.cookies.get(ADMIN_COOKIE)?.value;
+  const isValid = await verifyAdminSessionToken(token);
   const isLoginPage = request.nextUrl.pathname === '/admin/login';
 
-  if (!session && !isLoginPage) {
+  if (!isValid && !isLoginPage) {
     return NextResponse.redirect(new URL('/admin/login', request.url));
   }
 
-  if (session && isLoginPage) {
+  if (isValid && isLoginPage) {
     return NextResponse.redirect(new URL('/admin', request.url));
   }
 
