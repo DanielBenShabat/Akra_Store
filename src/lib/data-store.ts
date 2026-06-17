@@ -435,22 +435,20 @@ export async function updateOrderStatus(
     return;
   }
 
-  const { error: updateError } = await supabase
-    .from('orders')
-    .update({ status: 'confirmed' })
-    .eq('id', orderId);
-  if (updateError) throw new Error(updateError.message);
+  // Paid: atomically claim stock for every line item and flip to 'confirmed'.
+  // confirm_order decrements all items and confirms in one transaction, rolling
+  // back entirely if any 1-of-1 item was already sold (preventing a double-sale).
+  const { data: result, error: confirmError } = await supabase.rpc('confirm_order', {
+    p_order_id: orderId,
+  });
+  if (confirmError) throw new Error(confirmError.message);
 
-  const { data: items, error: itemsError } = await supabase
-    .from('order_items')
-    .select('product_id, quantity')
-    .eq('order_id', orderId);
-  if (itemsError) throw new Error(itemsError.message);
-
-  for (const item of items ?? []) {
-    await supabase.rpc('decrement_product_stock', {
-      p_id: item.product_id,
-      qty: item.quantity,
-    });
+  if (result === 'insufficient_stock') {
+    // Stock for one or more items was claimed by another order first. The order
+    // stays unconfirmed (no partial decrement happened); cancel it and surface.
+    await supabase.from('orders').update({ status: 'cancelled' }).eq('id', orderId);
+    throw new Error('One or more items just sold out. Your payment was not completed.');
   }
+  if (result === 'not_found') throw new Error('Order not found');
+  // 'confirmed' (just confirmed) or 'already' (idempotent re-run) → success.
 }

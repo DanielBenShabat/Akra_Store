@@ -83,8 +83,59 @@ create index if not exists order_items_order_id_idx on order_items(order_id);
 alter table orders enable row level security;
 alter table order_items enable row level security;
 
--- Atomically reduce stock on order confirmation, floored at 0 (never negative).
+-- Conditionally reduce stock. Decrements only when enough stock is available
+-- and returns whether the decrement succeeded. For the 1-of-1 model this means
+-- a unit can be claimed exactly once: a second caller sees stock 0 and gets false.
 create or replace function decrement_product_stock(p_id uuid, qty integer)
-returns void language sql as $$
-  update products set stock = greatest(stock - qty, 0) where id = p_id;
+returns boolean language plpgsql as $$
+declare
+  affected integer;
+begin
+  update products
+    set stock = stock - qty
+    where id = p_id and stock >= qty;
+  get diagnostics affected = row_count;
+  return affected > 0;
+end;
+$$;
+
+-- Atomically confirm an order: claim stock for every line item and flip the
+-- order to 'confirmed' in a single transaction. If any line can't be claimed
+-- (sold out), the whole thing rolls back and the order stays 'pending'.
+-- Returns: 'confirmed' (just confirmed), 'already' (idempotent re-run),
+-- 'not_found', or 'insufficient_stock'.
+create or replace function confirm_order(p_order_id uuid)
+returns text language plpgsql as $$
+declare
+  v_status order_status;
+  rec record;
+begin
+  -- Lock the order row so concurrent confirmations serialize on it.
+  select status into v_status from orders where id = p_order_id for update;
+  if not found then
+    return 'not_found';
+  end if;
+  if v_status <> 'pending' then
+    return 'already';
+  end if;
+
+  for rec in
+    select product_id, quantity from order_items where order_id = p_order_id
+  loop
+    if not decrement_product_stock(rec.product_id, rec.quantity) then
+      raise exception 'INSUFFICIENT_STOCK';
+    end if;
+  end loop;
+
+  update orders set status = 'confirmed' where id = p_order_id;
+  return 'confirmed';
+exception
+  when others then
+    -- Our sentinel rolls back all decrements above; surface it cleanly.
+    -- Anything unexpected is re-raised so real errors aren't masked.
+    if sqlerrm = 'INSUFFICIENT_STOCK' then
+      return 'insufficient_stock';
+    end if;
+    raise;
+end;
 $$;

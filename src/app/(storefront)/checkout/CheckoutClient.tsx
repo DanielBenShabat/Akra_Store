@@ -53,7 +53,6 @@ export function CheckoutClient({
       items={items}
       symbol={symbol}
       paymentFailed={paymentFailed}
-      clearCartOnSuccess={mode === 'cart'}
       buyNowProductId={buyNowProductId}
     />
   );

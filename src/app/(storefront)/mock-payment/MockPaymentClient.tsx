@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { useCartStore } from '@/lib/cart-store';
 import { updateOrderStatusAction } from './actions';
 
 interface Props {
@@ -26,6 +27,9 @@ export function MockPaymentClient({ orderId, productId }: Props) {
     }
 
     if (status === 'paid') {
+      // Definitive confirmation: purge the persisted cart, but only for a
+      // cart-mode order. Buy Now carries a productId and never touches the cart.
+      if (!productId) useCartStore.getState().clear();
       router.push(`/checkout/success?order=${orderId}`);
       return;
     }

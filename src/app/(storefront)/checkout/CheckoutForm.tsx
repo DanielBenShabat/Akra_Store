@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import Link from 'next/link';
 import { formatPrice } from '@/lib/utils';
 import { siteConfig } from '@/config/site';
-import { useCartStore, cartSubtotal } from '@/lib/cart-store';
+import { cartSubtotal } from '@/lib/cart-store';
 import type { CartItem, ShippingMethod } from '@/types';
 import { createPendingOrderAction, quoteOrderAction } from './actions';
 
@@ -54,19 +54,11 @@ interface Props {
   items: CartItem[];
   symbol: string;
   paymentFailed: boolean;
-  clearCartOnSuccess: boolean;
   buyNowProductId: string | null;
 }
 
-export function CheckoutForm({
-  items,
-  symbol,
-  paymentFailed,
-  clearCartOnSuccess,
-  buyNowProductId,
-}: Props) {
+export function CheckoutForm({ items, symbol, paymentFailed, buyNowProductId }: Props) {
   const router = useRouter();
-  const clearCart = useCartStore((s) => s.clear);
 
   const productIds = items.map((i) => i.productId);
 
@@ -132,8 +124,9 @@ export function CheckoutForm({
       return;
     }
 
-    if (clearCartOnSuccess) clearCart();
-
+    // Note: the cart is intentionally NOT cleared here. The order is only
+    // 'pending' at this point — clearing happens on confirmed payment in
+    // MockPaymentClient, so a failed payment leaves the cart intact for retry.
     const params = new URLSearchParams({ orderId: result.orderId });
     if (buyNowProductId) params.set('productId', buyNowProductId);
     router.push(`/mock-payment?${params.toString()}`);
