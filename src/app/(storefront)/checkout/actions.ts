@@ -1,7 +1,7 @@
 'use server';
 
 import { z } from 'zod';
-import { createPendingOrder, quoteOrderTotals } from '@/lib/data-store';
+import { createPendingOrder, quoteOrderTotals, UserFacingError } from '@/lib/data-store';
 import { isValidCity } from '@/lib/israeli-cities';
 
 const shippingMethodSchema = z.enum(['home', 'pickup']);
@@ -49,7 +49,10 @@ export async function createPendingOrderAction(
     });
     return { redirectUrl };
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Failed to create order' };
+    // Only surface curated business messages (e.g. "sold out"); log the rest.
+    if (e instanceof UserFacingError) return { error: e.message };
+    console.error('[checkout] createPendingOrder failed', e);
+    return { error: 'Failed to create order. Please try again.' };
   }
 }
 
@@ -82,11 +85,12 @@ export async function quoteOrderAction(
     const totals = await quoteOrderTotals(parsed.data.productIds, parsed.data.shippingMethod);
     return totals;
   } catch (e) {
+    console.error('[checkout] quoteOrderTotals failed', e);
     return {
       subtotal: 0,
       shipping: 0,
       total: 0,
-      error: e instanceof Error ? e.message : 'Failed to calculate totals',
+      error: 'Could not calculate totals. Please try again.',
     };
   }
 }

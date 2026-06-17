@@ -6,8 +6,6 @@ import { ProductGallery } from '@/components/product/ProductGallery';
 import { ProductInfo } from '@/components/product/ProductInfo';
 import { getProductById } from '@/lib/data-store';
 
-export const dynamic = 'force-dynamic';
-
 interface Props {
   params: Promise<{ id: string }>;
 }

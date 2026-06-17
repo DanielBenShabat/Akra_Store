@@ -7,8 +7,6 @@ import { getCategoriesWithProducts } from '@/lib/data-store';
 import { formatPrice } from '@/lib/utils';
 import { siteConfig } from '@/config/site';
 
-export const dynamic = 'force-dynamic';
-
 export const metadata: Metadata = { title: 'Available' };
 
 export default async function AvailablePage() {

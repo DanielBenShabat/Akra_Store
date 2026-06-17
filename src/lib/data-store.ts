@@ -1,10 +1,32 @@
 import 'server-only';
+import { unstable_cache } from 'next/cache';
 import { supabase } from './supabase';
 import { calculateTotals, type OrderTotals } from './pricing';
 import { getPaymentProvider } from '@/lib/payments';
 import { sendOrderConfirmationEmail } from '@/lib/email';
 import { siteConfig } from '@/config/site';
 import type { Product, Category, ArchiveItem, ShippingMethod } from '@/types';
+
+/**
+ * Error whose message is safe to surface to the end user (business-rule
+ * failures like "sold out"). Anything else is treated as an internal error,
+ * logged server-side, and replaced with a generic message by the caller.
+ */
+export class UserFacingError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'UserFacingError';
+  }
+}
+
+/** Cache tags for public catalog/archive reads; busted by admin mutations. */
+export const CACHE_TAGS = {
+  catalog: 'catalog',
+  archive: 'archive',
+} as const;
+
+// Periodic safety-net revalidation (1h) in addition to tag-based busting.
+const CACHE_REVALIDATE_SECONDS = 3600;
 
 type DbProduct = {
   id: string;
@@ -69,24 +91,32 @@ export async function getProducts(): Promise<Product[]> {
   return (data as DbProduct[]).map(toProduct);
 }
 
-export async function getGoosebumpsProducts(): Promise<Product[]> {
-  const { data, error } = await supabase
-    .from('products')
-    .select('*')
-    .eq('is_goosebumps', true);
-  if (error) throw new Error(error.message);
-  return (data as DbProduct[]).map(toProduct);
-}
+export const getGoosebumpsProducts = unstable_cache(
+  async (): Promise<Product[]> => {
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .eq('is_goosebumps', true);
+    if (error) throw new Error(error.message);
+    return (data as DbProduct[]).map(toProduct);
+  },
+  ['goosebumps-products'],
+  { tags: [CACHE_TAGS.catalog], revalidate: CACHE_REVALIDATE_SECONDS },
+);
 
-export async function getProductById(id: string): Promise<Product | undefined> {
-  const { data, error } = await supabase
-    .from('products')
-    .select('*')
-    .eq('id', id)
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  return data ? toProduct(data as DbProduct) : undefined;
-}
+export const getProductById = unstable_cache(
+  async (id: string): Promise<Product | undefined> => {
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? toProduct(data as DbProduct) : undefined;
+  },
+  ['product-by-id'],
+  { tags: [CACHE_TAGS.catalog], revalidate: CACHE_REVALIDATE_SECONDS },
+);
 
 export async function createProduct(
   data: Omit<Product, 'id' | 'stock'>,
@@ -135,22 +165,26 @@ export interface CategoryWithProducts extends Category {
   products: Product[];
 }
 
-export async function getCategoriesWithProducts(): Promise<CategoryWithProducts[]> {
-  const [cats, prods] = await Promise.all([getCategories(), getProducts()]);
+export const getCategoriesWithProducts = unstable_cache(
+  async (): Promise<CategoryWithProducts[]> => {
+    const [cats, prods] = await Promise.all([getCategories(), getProducts()]);
 
-  const byCategory = new Map<string, Product[]>();
-  for (const p of prods) {
-    if (p.isGoosebumps) continue;
-    if (!p.categoryId) continue;
-    if (!byCategory.has(p.categoryId)) byCategory.set(p.categoryId, []);
-    byCategory.get(p.categoryId)!.push(p);
-  }
+    const byCategory = new Map<string, Product[]>();
+    for (const p of prods) {
+      if (p.isGoosebumps) continue;
+      if (!p.categoryId) continue;
+      if (!byCategory.has(p.categoryId)) byCategory.set(p.categoryId, []);
+      byCategory.get(p.categoryId)!.push(p);
+    }
 
-  return cats.map((cat) => ({
-    ...cat,
-    products: byCategory.get(cat.id) ?? [],
-  }));
-}
+    return cats.map((cat) => ({
+      ...cat,
+      products: byCategory.get(cat.id) ?? [],
+    }));
+  },
+  ['categories-with-products'],
+  { tags: [CACHE_TAGS.catalog], revalidate: CACHE_REVALIDATE_SECONDS },
+);
 
 export async function createCategory(name: string): Promise<Category> {
   const slug = name.trim().toLowerCase().replace(/\s+/g, '-');
@@ -218,14 +252,18 @@ function toArchiveRow(data: Partial<Omit<ArchiveItem, 'id'>>): Record<string, un
   return row;
 }
 
-export async function getArchiveItems(): Promise<ArchiveItem[]> {
-  const { data, error } = await supabase
-    .from('archive_items')
-    .select('*')
-    .order('created_at', { ascending: true });
-  if (error) throw new Error(error.message);
-  return (data as DbArchiveItem[]).map(toArchiveItem);
-}
+export const getArchiveItems = unstable_cache(
+  async (): Promise<ArchiveItem[]> => {
+    const { data, error } = await supabase
+      .from('archive_items')
+      .select('*')
+      .order('created_at', { ascending: true });
+    if (error) throw new Error(error.message);
+    return (data as DbArchiveItem[]).map(toArchiveItem);
+  },
+  ['archive-items'],
+  { tags: [CACHE_TAGS.archive], revalidate: CACHE_REVALIDATE_SECONDS },
+);
 
 export async function createArchiveItem(data: Omit<ArchiveItem, 'id'>): Promise<ArchiveItem> {
   const { data: created, error } = await supabase
@@ -372,7 +410,7 @@ export async function createPendingOrder(
   input: CreatePendingOrderInput,
 ): Promise<{ orderId: string; redirectUrl: string }> {
   const ids = uniqueProductIds(input.items);
-  if (ids.length === 0) throw new Error('Your cart is empty');
+  if (ids.length === 0) throw new UserFacingError('Your cart is empty');
 
   const { data: products, error: productsError } = await supabase
     .from('products')
@@ -384,8 +422,8 @@ export async function createPendingOrder(
   const byId = new Map((products ?? []).map((p) => [p.id as string, p]));
   for (const id of ids) {
     const product = byId.get(id);
-    if (!product) throw new Error('One of your items is no longer available');
-    if (product.stock < 1) throw new Error(`${product.name} is sold out`);
+    if (!product) throw new UserFacingError('One of your items is no longer available');
+    if (product.stock < 1) throw new UserFacingError(`${product.name} is sold out`);
   }
 
   // Map each requested line to its authoritative product (quantity always 1).
@@ -449,7 +487,9 @@ export async function createPendingOrder(
     });
   } catch (e) {
     await supabase.from('orders').update({ status: 'cancelled' }).eq('id', orderId);
-    throw new Error(e instanceof Error ? e.message : 'Could not initialize payment');
+    // Don't leak the gateway's raw error to the client.
+    console.error('[order] payment initialization failed', e);
+    throw new UserFacingError('Could not start payment. Please try again.');
   }
 
   await supabase
@@ -459,14 +499,14 @@ export async function createPendingOrder(
 
   if (payment.status === 'failed') {
     await supabase.from('orders').update({ status: 'cancelled' }).eq('id', orderId);
-    throw new Error('Payment could not be started. Please try again.');
+    throw new UserFacingError('Payment could not be started. Please try again.');
   }
 
   if (payment.status === 'paid') {
     // Synchronous, server-trusted capture (simulated provider): confirm now.
     const result = await confirmPaidOrder(orderId);
     if (result === 'insufficient_stock') {
-      throw new Error('One or more items just sold out. Your order was not completed.');
+      throw new UserFacingError('One or more items just sold out. Your order was not completed.');
     }
     return { orderId, redirectUrl: `${siteConfig.url}/checkout/success?order=${orderId}` };
   }

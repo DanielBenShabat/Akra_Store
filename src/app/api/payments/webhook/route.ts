@@ -41,9 +41,31 @@ function signatureValid(raw: string, header: string, secret: string): boolean {
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
-/** Map Grow's status field to our two terminal outcomes. */
-function isPaid(status: string | undefined): boolean {
-  return status === '1' || status === 'approved' || status === 'success';
+// Explicit, terminal status allow-lists. Anything not listed (e.g. 'processing',
+// 'pending', or an unknown value) is treated as non-terminal and ignored, so we
+// never cancel an order right before its final 'paid' webhook arrives.
+const PAID_STATUSES = new Set(['1', 'paid', 'approved', 'success', 'completed']);
+const FAILED_STATUSES = new Set([
+  '0',
+  'failed',
+  'declined',
+  'cancelled',
+  'canceled',
+  'rejected',
+  'expired',
+  'error',
+  'void',
+  'voided',
+]);
+
+type Outcome = 'paid' | 'failed' | 'ignore';
+
+function classifyStatus(status: string | undefined): Outcome {
+  if (!status) return 'ignore';
+  const normalized = status.trim().toLowerCase();
+  if (PAID_STATUSES.has(normalized)) return 'paid';
+  if (FAILED_STATUSES.has(normalized)) return 'failed';
+  return 'ignore';
 }
 
 export async function POST(req: NextRequest) {
@@ -66,12 +88,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ received: true });
   }
 
+  const outcome = classifyStatus(body.status);
   try {
-    if (isPaid(body.status)) {
+    if (outcome === 'paid') {
       await confirmPaidOrder(orderId);
-    } else {
+    } else if (outcome === 'failed') {
       await cancelPendingOrder(orderId);
     }
+    // 'ignore' → non-terminal/unknown status: acknowledge without changing the
+    // order, so a later 'paid' webhook can still confirm it.
   } catch (e) {
     // Surface a 500 so the gateway retries; our confirm path is idempotent.
     const message = e instanceof Error ? e.message : 'Webhook processing failed';
