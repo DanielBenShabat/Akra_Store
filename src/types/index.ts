@@ -46,12 +46,16 @@ export interface Order {
   lastName: string;
   email: string;
   phone: string;
-  address: string;
   city: string;
+  street: string;
+  houseNumber: string;
+  postalCode: string | null;
   subtotal: number;
   shipping: number;
   shippingMethod: ShippingMethod;
   total: number;
+  paymentReference: string | null;
+  paymentProvider: string | null;
   status: 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
   createdAt: string;
 }

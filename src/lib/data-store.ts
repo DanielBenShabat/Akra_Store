@@ -324,8 +324,10 @@ export interface ShippingDetails {
   lastName: string;
   email: string;
   phone: string;
-  address: string;
   city: string;
+  street: string;
+  houseNumber: string;
+  postalCode?: string;
 }
 
 export interface OrderLineInput {
@@ -337,6 +339,8 @@ export interface CreatePendingOrderInput {
   items: OrderLineInput[];
   shippingMethod: ShippingMethod;
   shipping: ShippingDetails;
+  /** Set for the Buy Now fast lane → threaded into the gateway cancel URL. */
+  buyNowProductId?: string;
 }
 
 /** Unique product ids, preserving first-seen order (1-of-1: each appears once). */
@@ -398,8 +402,10 @@ export async function createPendingOrder(
       last_name: input.shipping.lastName,
       email: input.shipping.email,
       phone: input.shipping.phone,
-      address: input.shipping.address,
       city: input.shipping.city,
+      street: input.shipping.street,
+      house_number: input.shipping.houseNumber,
+      postal_code: input.shipping.postalCode ?? null,
       subtotal: totals.subtotal,
       shipping: totals.shipping,
       shipping_method: input.shippingMethod,
@@ -438,6 +444,7 @@ export async function createPendingOrder(
       email: input.shipping.email,
       fullName: `${input.shipping.firstName} ${input.shipping.lastName}`.trim(),
       phone: input.shipping.phone,
+      buyNowProductId: input.buyNowProductId,
     });
   } catch (e) {
     await supabase.from('orders').update({ status: 'cancelled' }).eq('id', orderId);

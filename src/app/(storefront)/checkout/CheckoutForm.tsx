@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { formatPrice } from '@/lib/utils';
 import { siteConfig } from '@/config/site';
 import { cartSubtotal } from '@/lib/cart-store';
+import { ISRAELI_CITIES, isValidCity } from '@/lib/israeli-cities';
 import type { CartItem, ShippingMethod } from '@/types';
 import { createPendingOrderAction, quoteOrderAction } from './actions';
 
@@ -18,8 +19,14 @@ const checkoutSchema = z.object({
   lastName: z.string().min(1, 'Required'),
   email: z.string().email('Enter a valid email'),
   phone: z.string().min(9, 'Enter a valid phone number'),
-  address: z.string().min(5, 'Enter your full address'),
-  city: z.string().min(1, 'Required'),
+  city: z.string().refine(isValidCity, 'Select your city'),
+  street: z.string().min(2, 'Enter your street'),
+  houseNumber: z.string().min(1, 'Required'),
+  postalCode: z
+    .string()
+    .regex(/^\d{5,7}$/, 'Enter a valid postal code')
+    .optional()
+    .or(z.literal('')),
   shippingMethod: z.enum(['home', 'pickup'], { message: 'Select a shipping method' }),
 });
 
@@ -53,9 +60,10 @@ interface Props {
   items: CartItem[];
   symbol: string;
   paymentFailed: boolean;
+  buyNowProductId: string | null;
 }
 
-export function CheckoutForm({ items, symbol, paymentFailed }: Props) {
+export function CheckoutForm({ items, symbol, paymentFailed, buyNowProductId }: Props) {
   const productIds = items.map((i) => i.productId);
 
   // Server is the single source of truth for totals; we seed display with a
@@ -112,6 +120,7 @@ export function CheckoutForm({ items, symbol, paymentFailed }: Props) {
     const result = await createPendingOrderAction({
       items: items.map((i) => ({ productId: i.productId, size: i.size })),
       shippingMethod,
+      buyNowProductId: buyNowProductId ?? undefined,
       shipping,
     });
 
@@ -175,12 +184,30 @@ export function CheckoutForm({ items, symbol, paymentFailed }: Props) {
         <input className={inputClass} type="tel" placeholder="050-000-0000" {...register('phone')} />
       </Field>
 
-      <Field label="Address" error={errors.address?.message}>
-        <input className={inputClass} placeholder="123 Dizengoff St, Apt 4" {...register('address')} />
+      <Field label="City" error={errors.city?.message}>
+        <select className={inputClass} defaultValue="" {...register('city')}>
+          <option value="" disabled>
+            Select a city
+          </option>
+          {ISRAELI_CITIES.map((city) => (
+            <option key={city} value={city}>
+              {city}
+            </option>
+          ))}
+        </select>
       </Field>
 
-      <Field label="City" error={errors.city?.message}>
-        <input className={inputClass} placeholder="Tel Aviv" {...register('city')} />
+      <div className="grid grid-cols-[1fr_auto] gap-4">
+        <Field label="Street" error={errors.street?.message}>
+          <input className={inputClass} placeholder="Dizengoff" {...register('street')} />
+        </Field>
+        <Field label="No." error={errors.houseNumber?.message}>
+          <input className={`${inputClass} w-24`} placeholder="123" {...register('houseNumber')} />
+        </Field>
+      </div>
+
+      <Field label="Postal Code (optional)" error={errors.postalCode?.message}>
+        <input className={inputClass} inputMode="numeric" placeholder="6100000" {...register('postalCode')} />
       </Field>
 
       <p className="text-nav font-bold uppercase tracking-nav border-b border-border pb-3">

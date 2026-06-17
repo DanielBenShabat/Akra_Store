@@ -2,6 +2,7 @@
 
 import { z } from 'zod';
 import { createPendingOrder, quoteOrderTotals } from '@/lib/data-store';
+import { isValidCity } from '@/lib/israeli-cities';
 
 const shippingMethodSchema = z.enum(['home', 'pickup']);
 
@@ -13,13 +14,16 @@ const lineItemSchema = z.object({
 const inputSchema = z.object({
   items: z.array(lineItemSchema).min(1),
   shippingMethod: shippingMethodSchema,
+  buyNowProductId: z.string().min(1).optional(),
   shipping: z.object({
     firstName: z.string().min(1),
     lastName: z.string().min(1),
     email: z.string().email(),
     phone: z.string().min(9),
-    address: z.string().min(5),
-    city: z.string().min(1),
+    city: z.string().refine(isValidCity, 'Select a valid city'),
+    street: z.string().min(2),
+    houseNumber: z.string().min(1),
+    postalCode: z.string().regex(/^\d{5,7}$/).optional().or(z.literal('')),
   }),
 });
 
@@ -36,10 +40,12 @@ export async function createPendingOrderAction(
   if (!parsed.success) return { error: 'Invalid order details' };
 
   try {
+    const { postalCode, ...rest } = parsed.data.shipping;
     const { redirectUrl } = await createPendingOrder({
       items: parsed.data.items,
       shippingMethod: parsed.data.shippingMethod,
-      shipping: parsed.data.shipping,
+      buyNowProductId: parsed.data.buyNowProductId,
+      shipping: { ...rest, postalCode: postalCode || undefined },
     });
     return { redirectUrl };
   } catch (e) {

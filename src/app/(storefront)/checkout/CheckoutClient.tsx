@@ -32,6 +32,7 @@ export function CheckoutClient({ mode, buyNowItem, symbol, paymentFailed }: Prop
   const cartItems = useCartStore((s) => s.items);
 
   const items = mode === 'buynow' ? (buyNowItem ? [buyNowItem] : []) : cartItems;
+  const buyNowProductId = mode === 'buynow' && buyNowItem ? buyNowItem.productId : null;
 
   // In cart mode the items come from localStorage; wait for hydration so we
   // don't flash an empty state before the persisted cart is available.
@@ -42,6 +43,11 @@ export function CheckoutClient({ mode, buyNowItem, symbol, paymentFailed }: Prop
   if (items.length === 0) return <EmptyState />;
 
   return (
-    <CheckoutForm items={items} symbol={symbol} paymentFailed={paymentFailed} />
+    <CheckoutForm
+      items={items}
+      symbol={symbol}
+      paymentFailed={paymentFailed}
+      buyNowProductId={buyNowProductId}
+    />
   );
 }

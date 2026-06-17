@@ -50,8 +50,12 @@ export const growProvider: PaymentProvider = {
     params.set('maxPaymentNum', '1');
     // `cField` is echoed back verbatim in the webhook → our order lookup key.
     params.set('cField', request.orderId);
+    // Buy Now returns to its isolated item on cancel; cart checkout to /checkout.
+    const cancelUrl = request.buyNowProductId
+      ? `${siteUrl}/checkout?error=payment_failed&productId=${request.buyNowProductId}`
+      : `${siteUrl}/checkout?error=payment_failed`;
     params.set('successUrl', `${siteUrl}/checkout/success?order=${request.orderId}`);
-    params.set('cancelUrl', `${siteUrl}/checkout?error=payment_failed`);
+    params.set('cancelUrl', cancelUrl);
     params.set('notifyUrl', `${siteUrl}/api/payments/webhook`);
     params.set('pageField[email]', request.email);
     if (request.fullName) params.set('pageField[fullName]', request.fullName);

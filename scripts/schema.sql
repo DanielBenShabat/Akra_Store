@@ -53,8 +53,13 @@ create table if not exists orders (
   last_name  text not null,
   email      text not null,
   phone      text not null,
-  address    text not null,
-  city            text not null,
+  -- Structured shipping address (courier-dispatch friendly). `city` is validated
+  -- against a canonical list in the app. `address` is legacy free-text, nullable.
+  address           text,
+  city              text not null,
+  street            text,
+  house_number      text,
+  postal_code       text,
   subtotal          numeric(10, 2) not null,
   shipping          numeric(10, 2) not null default 0,
   shipping_method   shipping_method not null default 'home',
@@ -68,6 +73,12 @@ create table if not exists orders (
 
 -- Multiple NULLs are allowed; the uniqueness only bites once a reference is set.
 create unique index if not exists orders_payment_reference_key on orders(payment_reference);
+
+-- Performance indexes for hot read paths under drop traffic.
+create index if not exists products_is_goosebumps_idx on products(is_goosebumps);
+create index if not exists products_category_id_idx on products(category_id);
+create index if not exists orders_status_idx on orders(status);
+create index if not exists orders_created_at_idx on orders(created_at desc);
 
 -- `product_id` mirrors the originating product but is not a foreign key in
 -- production, so a product can be deleted without affecting historical orders.
@@ -88,6 +99,11 @@ create index if not exists order_items_order_id_idx on order_items(order_id);
 -- denies all direct client (anon / authenticated) access by default.
 alter table orders enable row level security;
 alter table order_items enable row level security;
+-- Deny-all by default on catalog tables too, so a future anon/browser client
+-- cannot read or write them by accident. Service-role access is unaffected.
+alter table products enable row level security;
+alter table categories enable row level security;
+alter table archive_items enable row level security;
 
 -- Conditionally reduce stock. Decrements only when enough stock is available
 -- and returns whether the decrement succeeded. For the 1-of-1 model this means
