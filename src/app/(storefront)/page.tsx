@@ -5,7 +5,7 @@ import { FloatingButtons } from '@/components/layout/FloatingButtons';
 import { HeroSection } from '@/components/home/HeroSection';
 
 export const metadata: Metadata = {
-  title: { absolute: 'akra — Minimalist Streetwear' },
+  title: { absolute: 'AKRA' },
 };
 
 export default function HomePage() {

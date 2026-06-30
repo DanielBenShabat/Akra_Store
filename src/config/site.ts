@@ -32,15 +32,20 @@ export const siteConfig: SiteConfig = {
   shipping: {
     freeThreshold: 400,
     methods: {
-      home: {
-        label: 'Home Delivery',
-        description: 'Courier to your address · free over 400 NIS',
-        flatFee: 29.9,
+      express: {
+        label: 'Express Delivery',
+        description: 'Courier to your address · up to 3 business days · free over 400 NIS',
+        flatFee: 40,
+      },
+      standard: {
+        label: 'Standard Delivery',
+        description: 'Courier to your address · up to 10 business days · free over 400 NIS',
+        flatFee: 25,
       },
       pickup: {
-        label: 'Pick-up Point',
-        description: 'Collect from a nearby pick-up point',
-        flatFee: 15,
+        label: 'Self Pick-up',
+        description: 'Modi’in area, by prior arrangement · free',
+        flatFee: 0,
       },
     },
   },

@@ -1,0 +1,32 @@
+name: Deploy Akra Store to VM
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'scripts/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'next.config.ts'
+      - 'tsconfig.json'
+      - '.github/workflows/deploy-vm.yml'
+      - 'deploy/vm/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH pull, build, and restart app
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.AKRA_VM_HOST }}
+          username: ${{ secrets.AKRA_VM_USER }}
+          key: ${{ secrets.AKRA_VM_SSH_KEY }}
+          script_stop: true
+          script: |
+            cd "${{ vars.AKRA_VM_REPO_PATH }}"
+            git fetch origin
+            git reset --hard origin/main
+            bash deploy/vm/hook.sh

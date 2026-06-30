@@ -27,7 +27,9 @@ const checkoutSchema = z.object({
     .regex(/^\d{5,7}$/, 'Enter a valid postal code')
     .optional()
     .or(z.literal('')),
-  shippingMethod: z.enum(['home', 'pickup'], { message: 'Select a shipping method' }),
+  shippingMethod: z.enum(['express', 'standard', 'pickup'], {
+    message: 'Select a shipping method',
+  }),
 });
 
 type CheckoutFormValues = z.infer<typeof checkoutSchema>;
@@ -88,7 +90,7 @@ export function CheckoutForm({ items, symbol, paymentFailed, buyNowProductId }: 
     formState: { errors, isSubmitting },
   } = useForm<CheckoutFormValues>({
     resolver: zodResolver(checkoutSchema),
-    defaultValues: { shippingMethod: 'home' },
+    defaultValues: { shippingMethod: 'express' },
   });
 
   const selectedMethod = watch('shippingMethod');

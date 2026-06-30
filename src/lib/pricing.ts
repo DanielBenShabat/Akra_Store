@@ -15,13 +15,14 @@ export interface PricedLine {
 
 /**
  * Server-side source of truth for shipping cost. `home` delivery is the flat
- * fee, waived once the subtotal crosses the free-shipping threshold; `pickup`
- * is always its (cheaper) flat rate.
+ * fee, waived once the subtotal crosses the free-shipping threshold; free
+ * methods (e.g. `pickup`) are always 0.
  */
 export function shippingFor(subtotal: number, method: ShippingMethod): number {
   if (subtotal <= 0) return 0;
   const { flatFee } = siteConfig.shipping.methods[method];
-  if (method === 'home' && subtotal >= siteConfig.shipping.freeThreshold) return 0;
+  if (flatFee === 0) return 0;
+  if (subtotal >= siteConfig.shipping.freeThreshold) return 0;
   return flatFee;
 }
 

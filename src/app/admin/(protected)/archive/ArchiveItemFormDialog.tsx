@@ -294,7 +294,11 @@ export default function ArchiveItemFormDialog({
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={pending || isUploading}>
+              <Button
+                type="submit"
+                disabled={pending || isUploading}
+                className="bg-foreground px-8 text-background shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:bg-foreground/90 hover:shadow-md active:translate-y-0 active:scale-[0.97]"
+              >
                 {isUploading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -6,7 +6,7 @@ import { assertAdmin } from '@/lib/admin-auth';
 import { supabase } from '@/lib/supabase';
 import type { Product } from '@/types';
 
-type ProductFormValues = Omit<Product, 'id' | 'stock'>;
+type ProductFormValues = Omit<Product, 'id'>;
 type ActionResult = { success: boolean; error?: string };
 
 /** Bust the public catalog cache + the legacy path so the storefront stays in sync. */
@@ -15,14 +15,20 @@ function revalidateCatalog(): void {
   revalidatePath('/', 'layout');
 }
 
+/** Surface the underlying error to the (authenticated) admin UI + server logs. */
+function fail(context: string, e: unknown, fallback: string): ActionResult {
+  console.error(`[admin] ${context} failed`, e);
+  return { success: false, error: e instanceof Error ? e.message : fallback };
+}
+
 export async function createProductAction(data: ProductFormValues): Promise<ActionResult> {
   await assertAdmin();
   try {
     await createProduct(data);
     revalidateCatalog();
     return { success: true };
-  } catch {
-    return { success: false, error: 'Failed to create product' };
+  } catch (e) {
+    return fail('createProduct', e, 'Failed to create product');
   }
 }
 
@@ -35,8 +41,8 @@ export async function updateProductAction(
     await updateProduct(id, data);
     revalidateCatalog();
     return { success: true };
-  } catch {
-    return { success: false, error: 'Failed to update product' };
+  } catch (e) {
+    return fail('updateProduct', e, 'Failed to update product');
   }
 }
 
@@ -46,8 +52,8 @@ export async function deleteProductAction(id: string): Promise<ActionResult> {
     await deleteProduct(id);
     revalidateCatalog();
     return { success: true };
-  } catch {
-    return { success: false, error: 'Failed to delete product' };
+  } catch (e) {
+    return fail('deleteProduct', e, 'Failed to delete product');
   }
 }
 
@@ -68,7 +74,7 @@ export async function uploadProductImageAction(
 
   if (error) {
     console.error('[admin] product image upload failed', error);
-    return { error: 'Image upload failed. Please try again.' };
+    return { error: `Image upload failed: ${error.message}` };
   }
 
   const { data } = supabase.storage.from('product-images').getPublicUrl(filename);

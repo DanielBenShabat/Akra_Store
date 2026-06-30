@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { Menu, ShoppingBag } from 'lucide-react';
 import { useNav } from './NavContext';
 import { useCartStore, useCartHydrated } from '@/lib/cart-store';
@@ -24,9 +25,13 @@ export function TopBar() {
         </button>
 
         <div className="flex justify-center">
-          <span className="text-nav font-bold uppercase tracking-nav whitespace-nowrap select-none">
-            Akra The Duck
-          </span>
+          <Link
+            href="/"
+            aria-label="AKRA — home"
+            className="text-nav font-semibold tracking-[0.4em] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground rounded-sm"
+          >
+            AKRA
+          </Link>
         </div>
 
         <button
