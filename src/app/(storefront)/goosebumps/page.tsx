@@ -19,7 +19,7 @@ export default async function GoosebumpsPage() {
           </h1>
 
           {products.length === 0 ? (
-            <p className="text-nav text-muted-foreground">Coming soon.</p>
+            <p className="text-nav text-muted-foreground italic text-center">Coming soon!!</p>
           ) : (
             <div className="grid grid-cols-2 gap-x-3 gap-y-6">
               {products.map((product) => (

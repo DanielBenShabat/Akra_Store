@@ -1,11 +1,16 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { Menu, ShoppingBag } from 'lucide-react';
 import { useNav } from './NavContext';
 import { useCartStore, useCartHydrated } from '@/lib/cart-store';
 
-export function TopBar() {
+interface TopBarProps {
+  topLogoUrl?: string | null;
+}
+
+export function TopBar({ topLogoUrl }: TopBarProps) {
   const { openNav } = useNav();
   const hydrated = useCartHydrated();
   const itemCount = useCartStore((s) => s.items.length);
@@ -28,9 +33,16 @@ export function TopBar() {
           <Link
             href="/"
             aria-label="AKRA — home"
-            className="text-nav font-semibold tracking-[0.4em] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground rounded-sm"
+            className="flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground rounded-sm"
           >
-            AKRA
+            <Image
+              src={topLogoUrl || '/top_logo.png'}
+              alt="AKRA"
+              width={44}
+              height={44}
+              priority
+              className="h-10 w-auto object-contain"
+            />
           </Link>
         </div>
 

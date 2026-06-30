@@ -1,5 +1,5 @@
-import { siteConfig } from '@/config/site';
 import type { ShippingMethod } from '@/types';
+import type { ShippingSettings } from './site-settings';
 
 export interface OrderTotals {
   subtotal: number;
@@ -14,15 +14,30 @@ export interface PricedLine {
 }
 
 /**
- * Server-side source of truth for shipping cost. `home` delivery is the flat
- * fee, waived once the subtotal crosses the free-shipping threshold; free
- * methods (e.g. `pickup`) are always 0.
+ * Server-side source of truth for shipping cost. Standard delivery is waived
+ * once the subtotal crosses the free-shipping threshold; express remains paid;
+ * free methods (e.g. `pickup`) are always 0.
  */
-export function shippingFor(subtotal: number, method: ShippingMethod): number {
+export function shippingFor(
+  subtotal: number,
+  method: ShippingMethod,
+  settings: ShippingSettings,
+): number {
   if (subtotal <= 0) return 0;
-  const { flatFee } = siteConfig.shipping.methods[method];
+  const flatFee =
+    method === 'express'
+      ? settings.expressFee
+      : method === 'standard'
+        ? settings.standardFee
+        : settings.pickupFee;
   if (flatFee === 0) return 0;
-  if (subtotal >= siteConfig.shipping.freeThreshold) return 0;
+  if (
+    method === 'standard' &&
+    settings.freeStandardEnabled &&
+    subtotal >= settings.freeStandardThreshold
+  ) {
+    return 0;
+  }
   return flatFee;
 }
 
@@ -36,8 +51,12 @@ export function subtotalOf(items: PricedLine[]): number {
  * Aggregate the subtotal of every checkout line, add the flat shipping fee for
  * the chosen method, and produce the authoritative total. Server-side only.
  */
-export function calculateTotals(items: PricedLine[], method: ShippingMethod): OrderTotals {
+export function calculateTotals(
+  items: PricedLine[],
+  method: ShippingMethod,
+  settings: ShippingSettings,
+): OrderTotals {
   const subtotal = subtotalOf(items);
-  const shipping = shippingFor(subtotal, method);
+  const shipping = shippingFor(subtotal, method, settings);
   return { subtotal, shipping, total: subtotal + shipping };
 }

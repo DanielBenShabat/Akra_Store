@@ -34,12 +34,12 @@ export const siteConfig: SiteConfig = {
     methods: {
       express: {
         label: 'Express Delivery',
-        description: 'Courier to your address · up to 3 business days · free over 400 NIS',
+        description: 'Courier to your address · up to 3 business days',
         flatFee: 40,
       },
       standard: {
         label: 'Standard Delivery',
-        description: 'Courier to your address · up to 10 business days · free over 400 NIS',
+        description: 'Courier to your address · up to 10 business days',
         flatFee: 25,
       },
       pickup: {

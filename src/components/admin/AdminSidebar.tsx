@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutGrid, Store, ClipboardList, Tag, Images, Sparkles } from 'lucide-react';
+import { LayoutGrid, Store, ClipboardList, Tag, Images, Sparkles, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
@@ -11,6 +11,7 @@ const navItems = [
   { href: '/admin/categories', label: 'Categories', icon: Tag },
   { href: '/admin/archive', label: 'Archive', icon: Images },
   { href: '/admin/orders', label: 'Orders', icon: ClipboardList },
+  { href: '/admin/settings', label: 'Settings', icon: Settings },
 ];
 
 export default function AdminSidebar() {

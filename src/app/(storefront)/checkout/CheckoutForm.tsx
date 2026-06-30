@@ -12,6 +12,7 @@ import { siteConfig } from '@/config/site';
 import { cartSubtotal } from '@/lib/cart-store';
 import { ISRAELI_CITIES, isValidCity } from '@/lib/israeli-cities';
 import type { CartItem, ShippingMethod } from '@/types';
+import type { ShippingSettings } from '@/lib/site-settings';
 import { createPendingOrderAction, quoteOrderAction } from './actions';
 
 const checkoutSchema = z.object({
@@ -37,6 +38,24 @@ type CheckoutFormValues = z.infer<typeof checkoutSchema>;
 const shippingMethods = siteConfig.shipping.methods;
 const shippingMethodKeys = Object.keys(shippingMethods) as ShippingMethod[];
 
+function formatShekel(amount: number): string {
+  return `₪${amount}`;
+}
+
+function shippingOptionPrice(method: ShippingMethod, subtotal: number, settings: ShippingSettings): string {
+  const fee =
+    method === 'express'
+      ? settings.expressFee
+      : method === 'standard'
+        ? settings.standardFee
+        : settings.pickupFee;
+  if (fee === 0) return 'Free';
+  if (method === 'standard' && settings.freeStandardEnabled && subtotal >= settings.freeStandardThreshold) {
+    return 'Free';
+  }
+  return formatShekel(fee);
+}
+
 function Field({
   label,
   error,
@@ -61,11 +80,12 @@ const inputClass =
 interface Props {
   items: CartItem[];
   symbol: string;
+  shippingSettings: ShippingSettings;
   paymentFailed: boolean;
   buyNowProductId: string | null;
 }
 
-export function CheckoutForm({ items, symbol, paymentFailed, buyNowProductId }: Props) {
+export function CheckoutForm({ items, symbol, shippingSettings, paymentFailed, buyNowProductId }: Props) {
   const productIds = items.map((i) => i.productId);
 
   // Server is the single source of truth for totals; we seed display with a
@@ -217,6 +237,11 @@ export function CheckoutForm({ items, symbol, paymentFailed, buyNowProductId }: 
       </p>
 
       <div className="flex flex-col gap-3">
+        {shippingSettings.freeStandardEnabled && totals.subtotal < shippingSettings.freeStandardThreshold && (
+          <p className="text-badge font-medium uppercase tracking-nav text-muted-foreground">
+            Free delivery over {formatShekel(shippingSettings.freeStandardThreshold)}
+          </p>
+        )}
         {shippingMethodKeys.map((method) => {
           const config = shippingMethods[method];
           const isSelected = selectedMethod === method;
@@ -234,7 +259,12 @@ export function CheckoutForm({ items, symbol, paymentFailed, buyNowProductId }: 
                 {...register('shippingMethod')}
               />
               <div className="flex-1 min-w-0">
-                <p className="text-nav font-medium">{config.label}</p>
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-nav font-medium">{config.label}</p>
+                  <p className="text-nav font-medium whitespace-nowrap">
+                    {shippingOptionPrice(method, totals.subtotal, shippingSettings)}
+                  </p>
+                </div>
                 <p className="text-badge text-muted-foreground">{config.description}</p>
               </div>
             </label>

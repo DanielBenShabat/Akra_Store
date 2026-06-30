@@ -3,6 +3,7 @@ import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { getProductById } from '@/lib/data-store';
 import { siteConfig } from '@/config/site';
+import { getSiteSettings } from '@/lib/site-settings';
 import type { CartItem } from '@/types';
 import { CheckoutClient } from './CheckoutClient';
 
@@ -15,6 +16,7 @@ interface Props {
 export default async function CheckoutPage({ searchParams }: Props) {
   const { productId, error } = await searchParams;
   const symbol = siteConfig.currency.symbol;
+  const settings = await getSiteSettings();
 
   // "Buy Now" fast-lane: a single product is supplied via the URL and the
   // server resolves it authoritatively, bypassing the persistent cart.
@@ -41,6 +43,7 @@ export default async function CheckoutPage({ searchParams }: Props) {
             mode={productId ? 'buynow' : 'cart'}
             buyNowItem={buyNowItem}
             symbol={symbol}
+            shippingSettings={settings.shipping}
             paymentFailed={error === 'payment_failed'}
           />
         </div>

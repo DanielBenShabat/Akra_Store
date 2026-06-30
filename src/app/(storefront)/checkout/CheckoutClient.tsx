@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import type { CartItem } from '@/types';
+import type { ShippingSettings } from '@/lib/site-settings';
 import { useCartStore, useCartHydrated } from '@/lib/cart-store';
 import { CheckoutForm } from './CheckoutForm';
 
@@ -9,6 +10,7 @@ interface Props {
   mode: 'buynow' | 'cart';
   buyNowItem: CartItem | null;
   symbol: string;
+  shippingSettings: ShippingSettings;
   paymentFailed: boolean;
 }
 
@@ -27,7 +29,7 @@ function EmptyState() {
   );
 }
 
-export function CheckoutClient({ mode, buyNowItem, symbol, paymentFailed }: Props) {
+export function CheckoutClient({ mode, buyNowItem, symbol, shippingSettings, paymentFailed }: Props) {
   const hydrated = useCartHydrated();
   const cartItems = useCartStore((s) => s.items);
 
@@ -46,6 +48,7 @@ export function CheckoutClient({ mode, buyNowItem, symbol, paymentFailed }: Prop
     <CheckoutForm
       items={items}
       symbol={symbol}
+      shippingSettings={shippingSettings}
       paymentFailed={paymentFailed}
       buyNowProductId={buyNowProductId}
     />

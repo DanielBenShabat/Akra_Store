@@ -2,6 +2,7 @@ import 'server-only';
 import { unstable_cache } from 'next/cache';
 import { supabase } from './supabase';
 import { calculateTotals, type OrderTotals } from './pricing';
+import { getSiteSettings } from './site-settings';
 import { slugify } from './utils';
 import { getPaymentProvider } from '@/lib/payments';
 import { sendOrderConfirmationEmail } from '@/lib/email';
@@ -417,7 +418,8 @@ export async function quoteOrderTotals(
   if (error) throw new Error(error.message);
 
   const lines = (data ?? []).map((p) => ({ price: p.price as number, quantity: 1 }));
-  return calculateTotals(lines, method);
+  const settings = await getSiteSettings();
+  return calculateTotals(lines, method, settings.shipping);
 }
 
 export async function createPendingOrder(
@@ -443,9 +445,11 @@ export async function createPendingOrder(
   // Map each requested line to its authoritative product (quantity always 1).
   const sizeByProduct = new Map(input.items.map((i) => [i.productId, i.size]));
   const lines = ids.map((id) => byId.get(id)!);
+  const settings = await getSiteSettings();
   const totals = calculateTotals(
     lines.map((p) => ({ price: p.price as number, quantity: 1 })),
     input.shippingMethod,
+    settings.shipping,
   );
 
   const { data: order, error: orderError } = await supabase

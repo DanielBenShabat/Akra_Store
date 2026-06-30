@@ -6,6 +6,7 @@ interface LogoProps {
   height?: number;
   className?: string;
   priority?: boolean;
+  src?: string | null;
 }
 
 // Intrinsic dimensions of public/logo.png (the processed brand mark).
@@ -17,11 +18,11 @@ const LOGO_H = 897;
  * it everywhere. The PNG has a transparent background so it reads on both the
  * light header and the dark hero.
  */
-export function Logo({ height = 32, className, priority }: LogoProps) {
+export function Logo({ height = 32, className, priority, src }: LogoProps) {
   const width = Math.round((LOGO_W / LOGO_H) * height);
   return (
     <Image
-      src="/logo.png"
+      src={src || '/logo.png'}
       alt="AKRA"
       width={width}
       height={height}
