@@ -10,11 +10,9 @@ do $$ begin
 exception when duplicate_object then null;
 end $$;
 
--- Shipping method chosen at checkout. `home` = courier, `pickup` = pick-up point.
-do $$ begin
-  create type shipping_method as enum ('home', 'pickup');
-exception when duplicate_object then null;
-end $$;
+-- Shipping method chosen at checkout is stored as free text (`express`,
+-- `standard`, `pickup`, …) so methods can be added/renamed without an enum
+-- migration. The canonical set lives in src/config/site.ts.
 
 create table if not exists categories (
   id            uuid primary key default gen_random_uuid(),
@@ -62,7 +60,7 @@ create table if not exists orders (
   postal_code       text,
   subtotal          numeric(10, 2) not null,
   shipping          numeric(10, 2) not null default 0,
-  shipping_method   shipping_method not null default 'home',
+  shipping_method   text not null default 'express',
   total             numeric(10, 2),
   status            order_status not null default 'pending',
   -- External gateway reference (e.g. Grow process id). Unique → webhook idempotency.

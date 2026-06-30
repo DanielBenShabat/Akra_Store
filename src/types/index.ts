@@ -25,8 +25,13 @@ export interface Product {
   isGoosebumps: boolean;
 }
 
-/** How an order is fulfilled. `home` = courier to address, `pickup` = pick-up point. */
-export type ShippingMethod = 'home' | 'pickup';
+/**
+ * How an order is fulfilled:
+ * - `express`  — courier to address, up to 3 business days (40₪, free over threshold)
+ * - `standard` — courier to address, up to 10 business days (25₪, free over threshold)
+ * - `pickup`   — self-pickup, Modi'in area by prior arrangement (free)
+ */
+export type ShippingMethod = 'express' | 'standard' | 'pickup';
 
 /**
  * A line in the cart / checkout. Under the 1-of-1 model every entry is a unique

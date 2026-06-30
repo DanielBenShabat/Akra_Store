@@ -2,10 +2,12 @@ import 'server-only';
 import { unstable_cache } from 'next/cache';
 import { supabase } from './supabase';
 import { calculateTotals, type OrderTotals } from './pricing';
+import { getSiteSettings } from './site-settings';
+import { slugify } from './utils';
 import { getPaymentProvider } from '@/lib/payments';
 import { sendOrderConfirmationEmail } from '@/lib/email';
 import { siteConfig } from '@/config/site';
-import type { Product, Category, ArchiveItem, ShippingMethod } from '@/types';
+import type { Product, Category, ArchiveItem, ShippingMethod, Order } from '@/types';
 
 /**
  * Error whose message is safe to surface to the end user (business-rule
@@ -96,7 +98,8 @@ export const getGoosebumpsProducts = unstable_cache(
     const { data, error } = await supabase
       .from('products')
       .select('*')
-      .eq('is_goosebumps', true);
+      .eq('is_goosebumps', true)
+      .gt('stock', 0);
     if (error) throw new Error(error.message);
     return (data as DbProduct[]).map(toProduct);
   },
@@ -119,11 +122,11 @@ export const getProductById = unstable_cache(
 );
 
 export async function createProduct(
-  data: Omit<Product, 'id' | 'stock'>,
+  data: Omit<Product, 'id'>,
 ): Promise<Product> {
   const { data: created, error } = await supabase
     .from('products')
-    .insert(toRow({ ...data, stock: 1 }))
+    .insert(toRow(data))
     .select()
     .single();
   if (error) throw new Error(error.message);
@@ -187,7 +190,7 @@ export const getCategoriesWithProducts = unstable_cache(
 );
 
 export async function createCategory(name: string): Promise<Category> {
-  const slug = name.trim().toLowerCase().replace(/\s+/g, '-');
+  const slug = slugify(name);
 
   const { data: last } = await supabase
     .from('categories')
@@ -207,7 +210,7 @@ export async function createCategory(name: string): Promise<Category> {
 }
 
 export async function updateCategory(id: string, name: string): Promise<Category> {
-  const slug = name.trim().toLowerCase().replace(/\s+/g, '-');
+  const slug = slugify(name);
   const { data, error } = await supabase
     .from('categories')
     .update({ name: name.trim(), slug })
@@ -335,9 +338,16 @@ export interface OrderRow {
   id: string;
   first_name: string;
   last_name: string;
-  shipping_method: ShippingMethod;
+  email: string;
+  phone: string;
+  city: string;
+  street: string | null;
+  house_number: string | null;
+  postal_code: string | null;
+  shipping: number;
+  shipping_method: string;
   total: number;
-  status: string;
+  status: Order['status'];
   created_at: string;
   items: OrderRowItem[];
 }
@@ -346,7 +356,7 @@ export async function getOrders(): Promise<OrderRow[]> {
   const { data, error } = await supabase
     .from('orders')
     .select(
-      'id, first_name, last_name, shipping_method, total, status, created_at, order_items(name, size, price, quantity)',
+      'id, first_name, last_name, email, phone, city, street, house_number, postal_code, shipping, shipping_method, total, status, created_at, order_items(name, size, price, quantity)',
     )
     .order('created_at', { ascending: false });
   if (error) throw new Error(error.message);
@@ -356,6 +366,11 @@ export async function getOrders(): Promise<OrderRow[]> {
     ...order,
     items: order_items ?? [],
   }));
+}
+
+export async function updateOrderStatus(id: string, status: Order['status']): Promise<void> {
+  const { error } = await supabase.from('orders').update({ status }).eq('id', id);
+  if (error) throw new Error(error.message);
 }
 
 export interface ShippingDetails {
@@ -403,7 +418,8 @@ export async function quoteOrderTotals(
   if (error) throw new Error(error.message);
 
   const lines = (data ?? []).map((p) => ({ price: p.price as number, quantity: 1 }));
-  return calculateTotals(lines, method);
+  const settings = await getSiteSettings();
+  return calculateTotals(lines, method, settings.shipping);
 }
 
 export async function createPendingOrder(
@@ -429,9 +445,11 @@ export async function createPendingOrder(
   // Map each requested line to its authoritative product (quantity always 1).
   const sizeByProduct = new Map(input.items.map((i) => [i.productId, i.size]));
   const lines = ids.map((id) => byId.get(id)!);
+  const settings = await getSiteSettings();
   const totals = calculateTotals(
     lines.map((p) => ({ price: p.price as number, quantity: 1 })),
     input.shippingMethod,
+    settings.shipping,
   );
 
   const { data: order, error: orderError } = await supabase

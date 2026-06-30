@@ -11,28 +11,27 @@ const montserrat = Montserrat({
   display: 'swap',
 });
 
-const description =
-  'akra is a minimalist streetwear label — heavyweight cotton, considered cuts, and quiet detailing.';
+const description = 'AKRA — handmade one-of-a-kind knit and crochet pieces.';
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
   title: {
-    default: 'akra — Minimalist Streetwear',
-    template: '%s · akra',
+    default: 'AKRA',
+    template: '%s · AKRA',
   },
   description,
-  applicationName: 'akra',
+  applicationName: 'AKRA',
   openGraph: {
     type: 'website',
-    siteName: 'akra',
-    title: 'akra — Minimalist Streetwear',
+    siteName: 'AKRA',
+    title: 'AKRA',
     description,
     url: siteConfig.url,
     locale: 'en_US',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'akra — Minimalist Streetwear',
+    title: 'AKRA',
     description,
   },
   robots: {

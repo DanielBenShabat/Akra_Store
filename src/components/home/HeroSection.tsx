@@ -1,17 +1,27 @@
-export function HeroSection() {
+import { Logo } from '@/components/layout/Logo';
+import { getSiteSettings } from '@/lib/site-settings';
+
+export async function HeroSection() {
+  const settings = await getSiteSettings();
+  const heroBackgroundUrl = settings.heroBackground.url;
+
   return (
     <section
       aria-labelledby="hero-heading"
       className="relative w-full bg-surface-dark flex items-end justify-start h-[80vh]"
+      style={
+        heroBackgroundUrl
+          ? {
+              backgroundImage: `url(${heroBackgroundUrl})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+            }
+          : undefined
+      }
     >
-      <h1 id="hero-heading" className="sr-only">Akra The Duck</h1>
+      <h1 id="hero-heading" className="sr-only">AKRA</h1>
       <div className="p-8 pb-10">
-        <p className="text-on-dark text-5xl font-bold uppercase leading-none tracking-tight">
-          Akra
-        </p>
-        <p className="text-on-dark/50 text-sm uppercase tracking-[0.35em] mt-2">
-          The Duck
-        </p>
+        <Logo height={120} priority src={settings.logo.url} />
       </div>
     </section>
   );

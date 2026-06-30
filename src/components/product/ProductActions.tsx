@@ -4,7 +4,6 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
 import { useCartStore } from '@/lib/cart-store';
 import type { Product } from '@/types';
-import { BuyNowButton } from './BuyNowButton';
 
 interface ProductActionsProps {
   product: Product;
@@ -33,7 +32,6 @@ export function ProductActions({ product }: ProductActionsProps) {
 
   return (
     <div className="flex flex-col gap-3">
-      <BuyNowButton product={product} />
       <Button
         variant="ghost"
         className="w-full py-4 text-nav uppercase tracking-nav border border-foreground disabled:opacity-50"

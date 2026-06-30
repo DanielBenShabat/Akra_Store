@@ -25,11 +25,14 @@ export default async function AvailablePage() {
 
           {categories.map((cat) => (
             <section key={cat.id} aria-labelledby={`cat-${cat.id}`}>
-              <h2
-                id={`cat-${cat.id}`}
-                className="px-4 pb-3 text-nav font-bold uppercase tracking-nav"
-              >
-                {cat.name}
+              <h2 id={`cat-${cat.id}`} className="px-4 pb-3">
+                <Link
+                  href={`/category/${cat.slug}`}
+                  className="group inline-flex items-center gap-1.5 text-nav font-bold uppercase tracking-nav hover:text-muted-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground rounded-sm"
+                >
+                  {cat.name}
+                  <span aria-hidden className="transition-transform group-hover:translate-x-0.5">→</span>
+                </Link>
               </h2>
 
               {cat.products.length === 0 ? (

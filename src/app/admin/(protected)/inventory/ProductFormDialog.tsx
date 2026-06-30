@@ -31,10 +31,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/admin-ui/select';
-import { Switch } from '@/components/admin-ui/switch';
 import { Button } from '@/components/admin-ui/button';
 import { Label } from '@/components/admin-ui/label';
 import { uploadProductImageAction } from './actions';
+import { cn } from '@/lib/utils';
 
 const SIZE_OPTIONS = ['One Size', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '28', '30', '32', '34', '36'];
 
@@ -49,6 +49,7 @@ const productSchema = z
     size: z.string().min(1, 'Size is required'),
     images: z.array(z.string()),
     isGoosebumps: z.boolean(),
+    isUnavailable: z.boolean(),
   })
   .refine((d) => d.isGoosebumps || d.categoryId.length > 0, {
     path: ['categoryId'],
@@ -61,9 +62,10 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   product?: Product | null;
-  onSubmit: (data: Omit<Product, 'id' | 'stock'>) => void;
+  onSubmit: (data: Omit<Product, 'id'>) => void;
   pending: boolean;
   categories: Category[];
+  defaultIsGoosebumps?: boolean;
 }
 
 export default function ProductFormDialog({
@@ -73,6 +75,7 @@ export default function ProductFormDialog({
   onSubmit,
   pending,
   categories,
+  defaultIsGoosebumps = false,
 }: Props) {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -87,6 +90,7 @@ export default function ProductFormDialog({
       size: 'One Size',
       images: [],
       isGoosebumps: false,
+      isUnavailable: false,
     },
   });
 
@@ -105,21 +109,23 @@ export default function ProductFormDialog({
               size: product.size,
               images: product.images,
               isGoosebumps: product.isGoosebumps,
+              isUnavailable: product.stock < 1,
             }
           : {
               name: '',
-              price: 0,
-              categoryId: categories[0]?.id ?? '',
-              description: '',
+                price: 0,
+                categoryId: defaultIsGoosebumps ? '' : (categories[0]?.id ?? ''),
+                description: '',
               size: 'One Size',
               images: [],
-              isGoosebumps: false,
+              isGoosebumps: defaultIsGoosebumps,
+              isUnavailable: false,
             }
       );
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
-  }, [open, product, form, categories]);
+  }, [open, product, form, categories, defaultIsGoosebumps]);
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const selected = Array.from(e.target.files ?? []);
@@ -175,9 +181,10 @@ export default function ProductFormDialog({
   }
 
   const handleSubmit = form.handleSubmit((data) => {
-    const cleaned: Omit<Product, 'id' | 'stock'> = {
+    const cleaned: Omit<Product, 'id'> = {
       name: data.name,
       price: data.price,
+      stock: data.isUnavailable ? 0 : 1,
       isGoosebumps: data.isGoosebumps,
       categoryId: data.isGoosebumps || !data.categoryId ? null : data.categoryId,
       description: data.description || undefined,
@@ -266,16 +273,62 @@ export default function ProductFormDialog({
               control={form.control}
               name="isGoosebumps"
               render={({ field }) => (
-                <FormItem className="flex items-center justify-between rounded-md border border-border p-3">
-                  <div className="space-y-0.5">
-                    <FormLabel>Add to Goosebumps Collection</FormLabel>
-                    <p className="text-sm text-muted-foreground">
-                      Goosebumps products appear on the Goosebumps page and are excluded from Available.
-                    </p>
-                  </div>
-                  <FormControl>
-                    <Switch checked={field.value} onCheckedChange={field.onChange} />
-                  </FormControl>
+                <FormItem>
+                  <button
+                    type="button"
+                    aria-pressed={field.value}
+                    onClick={() => field.onChange(!field.value)}
+                    className={cn(
+                      'flex w-full cursor-pointer items-center justify-between rounded-md border border-border p-4 text-left transition-all duration-150 active:scale-[0.98]',
+                      field.value
+                        ? 'border-foreground bg-foreground text-background shadow-md'
+                        : 'bg-background hover:border-foreground hover:shadow-sm',
+                    )}
+                  >
+                    <span className="text-sm font-medium">Add to Goosebumps Collection</span>
+                    <span
+                      className={cn(
+                        'rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide',
+                        field.value
+                          ? 'border-background text-background'
+                          : 'border-border text-muted-foreground',
+                      )}
+                    >
+                      {field.value ? '✓' : '○'}
+                    </span>
+                  </button>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="isUnavailable"
+              render={({ field }) => (
+                <FormItem>
+                  <button
+                    type="button"
+                    aria-pressed={field.value}
+                    onClick={() => field.onChange(!field.value)}
+                    className={cn(
+                      'flex w-full cursor-pointer items-center justify-between rounded-md border border-border p-4 text-left transition-all duration-150 active:scale-[0.98]',
+                      field.value
+                        ? 'border-foreground bg-foreground text-background shadow-md'
+                        : 'bg-background hover:border-foreground hover:shadow-sm',
+                    )}
+                  >
+                    <span className="text-sm font-medium">Make unavailable</span>
+                    <span
+                      className={cn(
+                        'rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide',
+                        field.value
+                          ? 'border-background text-background'
+                          : 'border-border text-muted-foreground',
+                      )}
+                    >
+                      {field.value ? '✓' : '○'}
+                    </span>
+                  </button>
                 </FormItem>
               )}
             />
@@ -355,7 +408,7 @@ export default function ProductFormDialog({
 
                 <label
                   htmlFor="product-image-input"
-                  className={`flex items-center gap-2 w-full cursor-pointer rounded-md border border-input bg-background px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground ${isUploading ? 'pointer-events-none opacity-50' : ''}`}
+                  className={`flex items-center justify-center gap-2 w-full cursor-pointer rounded-md border border-foreground bg-foreground px-3 py-3 text-sm font-semibold text-background shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:bg-foreground/90 hover:shadow-md active:translate-y-0 active:scale-[0.98] ${isUploading ? 'pointer-events-none opacity-50' : ''}`}
                 >
                   {isUploading ? (
                     <>
@@ -391,7 +444,11 @@ export default function ProductFormDialog({
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={pending || isUploading}>
+              <Button
+                type="submit"
+                disabled={pending || isUploading}
+                className="bg-foreground px-8 text-background shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:bg-foreground/90 hover:shadow-md active:translate-y-0 active:scale-[0.97]"
+              >
                 {isUploading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

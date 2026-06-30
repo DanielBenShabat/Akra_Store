@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function InventoryPage() {
   const [products, categories] = await Promise.all([getProducts(), getCategories()]);
+  const inventoryProducts = products.filter((product) => !product.isGoosebumps);
 
   return (
     <div className="space-y-4">
@@ -14,7 +15,7 @@ export default async function InventoryPage() {
           Manage your products and stock levels.
         </p>
       </div>
-      <InventoryClient products={products} categories={categories} />
+      <InventoryClient products={inventoryProducts} categories={categories} />
     </div>
   );
 }

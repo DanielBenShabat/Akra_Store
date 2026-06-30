@@ -15,13 +15,21 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/admin-ui/table';
-import { createProductAction, updateProductAction, deleteProductAction } from './actions';
+import {
+  createProductAction,
+  updateProductAction,
+  deleteProductAction,
+} from './actions';
 import ProductFormDialog from './ProductFormDialog';
 import DeleteConfirmDialog from './DeleteConfirmDialog';
 
 function StatusBadge({ stock }: { stock: number }) {
   if (stock < 1)
-    return <Badge className="bg-zinc-100 text-zinc-600 border-zinc-200 hover:bg-zinc-100">Sold</Badge>;
+    return (
+      <Badge className="bg-red-100 text-red-700 border-red-200 hover:bg-red-100">
+        Not Available
+      </Badge>
+    );
   return (
     <Badge className="bg-green-100 text-green-700 border-green-200 hover:bg-green-100">Available</Badge>
   );
@@ -30,11 +38,12 @@ function StatusBadge({ stock }: { stock: number }) {
 interface Props {
   products: Product[];
   categories: Category[];
+  mode?: 'inventory' | 'goosebumps';
 }
 
-type ProductFormValues = Omit<Product, 'id' | 'stock'>;
+type ProductFormValues = Omit<Product, 'id'>;
 
-export default function InventoryClient({ products, categories }: Props) {
+export default function InventoryClient({ products, categories, mode = 'inventory' }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [formOpen, setFormOpen] = useState(false);
@@ -95,7 +104,7 @@ export default function InventoryClient({ products, categories }: Props) {
       <div className="flex justify-end">
         <Button onClick={openAdd} className="gap-2">
           <Plus className="h-4 w-4" />
-          Add Product
+          {mode === 'goosebumps' ? 'Add Goosebumps Item' : 'Add Product'}
         </Button>
       </div>
 
@@ -191,6 +200,7 @@ export default function InventoryClient({ products, categories }: Props) {
         onSubmit={handleFormSubmit}
         pending={isPending}
         categories={categories}
+        defaultIsGoosebumps={mode === 'goosebumps'}
       />
 
       <DeleteConfirmDialog

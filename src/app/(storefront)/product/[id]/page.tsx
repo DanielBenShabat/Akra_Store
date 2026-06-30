@@ -13,7 +13,7 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const product = await getProductById(id);
-  if (!product) return { title: 'Product Not Found' };
+  if (!product || product.stock < 1) return { title: 'Product Not Found' };
 
   const description = product.description ?? `${product.name} — available now at akra.`;
   return {
@@ -31,7 +31,7 @@ export default async function ProductPage({ params }: Props) {
   const { id } = await params;
   const product = await getProductById(id);
 
-  if (!product) notFound();
+  if (!product || product.stock < 1) notFound();
 
   return (
     <>

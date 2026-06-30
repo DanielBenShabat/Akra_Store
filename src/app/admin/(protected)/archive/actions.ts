@@ -14,6 +14,12 @@ import type { ArchiveItem } from '@/types';
 type ArchiveItemValues = Omit<ArchiveItem, 'id'>;
 type ActionResult = { success: boolean; error?: string };
 
+/** Surface the underlying error to the (authenticated) admin UI + server logs. */
+function fail(context: string, e: unknown, fallback: string): ActionResult {
+  console.error(`[admin] ${context} failed`, e);
+  return { success: false, error: e instanceof Error ? e.message : fallback };
+}
+
 /** Bust the public archive cache + admin/legacy paths so everything stays in sync. */
 function revalidateArchive(): void {
   revalidateTag(CACHE_TAGS.archive, 'max');
@@ -38,7 +44,7 @@ export async function uploadArchiveImageAction(
 
   if (error) {
     console.error('[admin] archive image upload failed', error);
-    return { error: 'Image upload failed. Please try again.' };
+    return { error: `Image upload failed: ${error.message}` };
   }
 
   const { data } = supabase.storage.from('product-images').getPublicUrl(filename);
@@ -51,8 +57,8 @@ export async function createArchiveItemAction(data: ArchiveItemValues): Promise<
     await createArchiveItem(data);
     revalidateArchive();
     return { success: true };
-  } catch {
-    return { success: false, error: 'Failed to create archive item' };
+  } catch (e) {
+    return fail('createArchiveItem', e, 'Failed to create archive item');
   }
 }
 
@@ -65,8 +71,8 @@ export async function updateArchiveItemAction(
     await updateArchiveItem(id, data);
     revalidateArchive();
     return { success: true };
-  } catch {
-    return { success: false, error: 'Failed to update archive item' };
+  } catch (e) {
+    return fail('updateArchiveItem', e, 'Failed to update archive item');
   }
 }
 
@@ -76,7 +82,7 @@ export async function deleteArchiveItemAction(id: string): Promise<ActionResult>
     await deleteArchiveItem(id);
     revalidateArchive();
     return { success: true };
-  } catch {
-    return { success: false, error: 'Failed to delete archive item' };
+  } catch (e) {
+    return fail('deleteArchiveItem', e, 'Failed to delete archive item');
   }
 }
