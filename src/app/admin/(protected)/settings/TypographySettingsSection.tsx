@@ -3,11 +3,11 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { Loader2, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/admin-ui/button';
 import { Input } from '@/components/admin-ui/input';
 import { Label } from '@/components/admin-ui/label';
-import type { TypographySettings } from '@/lib/site-settings';
+import type { TypographyDefaults, TypographySettings } from '@/lib/site-settings';
 import { updateTypographySettingsAction } from './actions';
 
 interface Props {
@@ -33,6 +33,15 @@ const PREVIEW_TEXT: Record<string, string> = {
 };
 
 const STYLE_KEYS = ['pageTitle', 'sectionTitle', 'productTitle', 'productPrice', 'bodyText', 'navText'] as const;
+
+const HARD_CODED_DEFAULTS: TypographyDefaults = {
+  pageTitle: { mobilePx: 24, desktopPx: 24 },
+  sectionTitle: { mobilePx: 22, desktopPx: 22 },
+  productTitle: { mobilePx: 19, desktopPx: 19 },
+  productPrice: { mobilePx: 16, desktopPx: 16 },
+  bodyText: { mobilePx: 14, desktopPx: 14 },
+  navText: { mobilePx: 14, desktopPx: 14 },
+};
 
 export default function TypographySettingsSection({ typography }: Props) {
   const router = useRouter();
@@ -62,6 +71,27 @@ export default function TypographySettingsSection({ typography }: Props) {
         router.refresh();
       } else {
         toast.error(result.error ?? 'Failed to save typography');
+      }
+    });
+  }
+
+  function handleResetRow(key: keyof TypographyDefaults) {
+    const nextDefaults = {
+      ...defaults,
+      [key]: HARD_CODED_DEFAULTS[key],
+    };
+    setDefaults(nextDefaults);
+
+    const payload = new FormData();
+    payload.append('value', JSON.stringify({ defaults: nextDefaults, pages: typography.pages }));
+
+    startTransition(async () => {
+      const result = await updateTypographySettingsAction(payload);
+      if (result.success) {
+        toast.success(`${STYLE_LABELS[key]} reset to default`);
+        router.refresh();
+      } else {
+        toast.error(result.error ?? `Failed to reset ${STYLE_LABELS[key]}`);
       }
     });
   }
@@ -133,6 +163,16 @@ export default function TypographySettingsSection({ typography }: Props) {
                   {PREVIEW_TEXT[key]}
                 </p>
               </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={isPending}
+                onClick={() => handleResetRow(key)}
+                className="mt-3"
+              >
+                <RotateCcw className="mr-2 h-3.5 w-3.5" /> Reset {label} to default
+              </Button>
             </div>
           );
         })}

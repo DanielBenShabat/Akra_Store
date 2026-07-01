@@ -159,12 +159,12 @@ const DEFAULT_CONTENT: ContentSettings = {
 
 const DEFAULT_TYPOGRAPHY: TypographySettings = {
   defaults: {
-    pageTitle: { mobilePx: 24, desktopPx: 32 },
-    sectionTitle: { mobilePx: 18, desktopPx: 24 },
-    productTitle: { mobilePx: 14, desktopPx: 16 },
-    productPrice: { mobilePx: 13, desktopPx: 14 },
-    bodyText: { mobilePx: 14, desktopPx: 15 },
-    navText: { mobilePx: 13, desktopPx: 14 },
+    pageTitle: { mobilePx: 24, desktopPx: 24 },
+    sectionTitle: { mobilePx: 22, desktopPx: 22 },
+    productTitle: { mobilePx: 19, desktopPx: 19 },
+    productPrice: { mobilePx: 16, desktopPx: 16 },
+    bodyText: { mobilePx: 14, desktopPx: 14 },
+    navText: { mobilePx: 14, desktopPx: 14 },
   },
   pages: {},
 };
@@ -308,11 +308,11 @@ function parseContent(value: unknown): ContentSettings {
   };
 }
 
-function parseFontScale(value: unknown): FontScale {
+function parseFontScale(value: unknown, fallback: FontScale = { mobilePx: 14, desktopPx: 16 }): FontScale {
   const raw = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
   return {
-    mobilePx: numberOr(raw.mobilePx, 14),
-    desktopPx: numberOr(raw.desktopPx, 16),
+    mobilePx: numberOr(raw.mobilePx, fallback.mobilePx),
+    desktopPx: numberOr(raw.desktopPx, fallback.desktopPx),
   };
 }
 
@@ -338,12 +338,12 @@ function parseTypography(value: unknown): TypographySettings {
   const raw = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
   const rawDefaults = raw.defaults && typeof raw.defaults === 'object' ? (raw.defaults as Record<string, unknown>) : {};
   const defaults: TypographyDefaults = {
-    pageTitle: parseFontScale(rawDefaults.pageTitle),
-    sectionTitle: parseFontScale(rawDefaults.sectionTitle),
-    productTitle: parseFontScale(rawDefaults.productTitle),
-    productPrice: parseFontScale(rawDefaults.productPrice),
-    bodyText: parseFontScale(rawDefaults.bodyText),
-    navText: parseFontScale(rawDefaults.navText),
+    pageTitle: parseFontScale(rawDefaults.pageTitle, DEFAULT_TYPOGRAPHY.defaults.pageTitle),
+    sectionTitle: parseFontScale(rawDefaults.sectionTitle, DEFAULT_TYPOGRAPHY.defaults.sectionTitle),
+    productTitle: parseFontScale(rawDefaults.productTitle, DEFAULT_TYPOGRAPHY.defaults.productTitle),
+    productPrice: parseFontScale(rawDefaults.productPrice, DEFAULT_TYPOGRAPHY.defaults.productPrice),
+    bodyText: parseFontScale(rawDefaults.bodyText, DEFAULT_TYPOGRAPHY.defaults.bodyText),
+    navText: parseFontScale(rawDefaults.navText, DEFAULT_TYPOGRAPHY.defaults.navText),
   };
   // Merge with default typography so new fields are never undefined
   const mergedDefaults: TypographyDefaults = {

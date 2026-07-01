@@ -8,6 +8,7 @@ import {
   updateImageSetting,
   updateShippingSettings,
   updateJsonSetting,
+  defaultSiteSettings,
   type ShippingSettings,
 } from '@/lib/site-settings';
 import { supabase } from '@/lib/supabase';
@@ -177,9 +178,34 @@ export async function updateTypographySettingsAction(formData: FormData): Promis
     const value = JSON.parse(valueRaw);
     await updateJsonSetting('typography', value);
     revalidateSettings();
+    revalidatePath('/available');
+    revalidatePath('/archive');
+    revalidatePath('/goosebumps');
+    revalidatePath('/about');
+    revalidatePath('/contact');
+    revalidatePath('/faq');
+    revalidatePath('/checkout');
     return { success: true };
   } catch (e) {
     return fail('updateTypographySettings', e, 'Failed to update typography settings');
+  }
+}
+
+export async function resetTypographySettingsAction(): Promise<ActionResult> {
+  await assertAdmin();
+  try {
+    await updateJsonSetting('typography', defaultSiteSettings.typography);
+    revalidateSettings();
+    revalidatePath('/available');
+    revalidatePath('/archive');
+    revalidatePath('/goosebumps');
+    revalidatePath('/about');
+    revalidatePath('/contact');
+    revalidatePath('/faq');
+    revalidatePath('/checkout');
+    return { success: true };
+  } catch (e) {
+    return fail('resetTypographySettings', e, 'Failed to reset typography settings');
   }
 }
 
