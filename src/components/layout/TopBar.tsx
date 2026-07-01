@@ -8,9 +8,22 @@ import { useCartStore, useCartHydrated } from '@/lib/cart-store';
 
 interface TopBarProps {
   topLogoUrl?: string | null;
+  menuIconUrl?: string | null;
+  cartIconUrl?: string | null;
+  closeIconUrl?: string | null;
 }
 
-export function TopBar({ topLogoUrl }: TopBarProps) {
+function IconRenderer({ url, defaultIcon }: { url?: string | null; defaultIcon: React.ReactNode }) {
+  if (url) {
+    return (
+      /* eslint-disable-next-line @next/next/no-img-element */
+      <img src={url} alt="" className="h-5 w-5 object-contain" />
+    );
+  }
+  return <>{defaultIcon}</>;
+}
+
+export function TopBar({ topLogoUrl, menuIconUrl, cartIconUrl }: TopBarProps) {
   const { openNav } = useNav();
   const hydrated = useCartHydrated();
   const itemCount = useCartStore((s) => s.items.length);
@@ -26,7 +39,7 @@ export function TopBar({ topLogoUrl }: TopBarProps) {
           className="p-3 -ml-3 text-foreground hover:text-muted-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground rounded-sm"
           style={{ touchAction: 'manipulation', cursor: 'pointer' }}
         >
-          <Menu size={20} strokeWidth={1.5} />
+          <IconRenderer url={menuIconUrl} defaultIcon={<Menu size={20} strokeWidth={1.5} />} />
         </button>
 
         <div className="flex justify-center">
@@ -53,7 +66,7 @@ export function TopBar({ topLogoUrl }: TopBarProps) {
           className="relative p-3 -mr-3 text-foreground hover:text-muted-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground rounded-sm"
           style={{ touchAction: 'manipulation', cursor: 'pointer' }}
         >
-          <ShoppingBag size={20} strokeWidth={1.5} />
+          <IconRenderer url={cartIconUrl} defaultIcon={<ShoppingBag size={20} strokeWidth={1.5} />} />
           {hydrated && itemCount > 0 && (
             <span className="absolute top-1 right-1 min-w-4 h-4 px-1 flex items-center justify-center rounded-full bg-foreground text-on-dark text-[10px] font-bold leading-none">
               {itemCount}

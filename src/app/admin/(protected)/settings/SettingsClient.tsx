@@ -8,12 +8,18 @@ import { Button } from '@/components/admin-ui/button';
 import { Input } from '@/components/admin-ui/input';
 import { Label } from '@/components/admin-ui/label';
 import { Checkbox } from '@/components/admin-ui/checkbox';
+import { Separator } from '@/components/admin-ui/separator';
 import type { SiteSettings } from '@/lib/site-settings';
 import {
   clearSettingImageAction,
   updateShippingSettingsAction,
   uploadSettingImageAction,
 } from './actions';
+import IconSettingsSection from './IconSettingsSection';
+import NavigationSettingsSection from './NavigationSettingsSection';
+import ContentSettingsSection from './ContentSettingsSection';
+import TypographySettingsSection from './TypographySettingsSection';
+import BackgroundSettingsSection from './BackgroundSettingsSection';
 
 interface Props {
   settings: SiteSettings;
@@ -169,6 +175,26 @@ export default function SettingsClient({ settings }: Props) {
       <ImageSetting title="Logo" settingKey="logo" url={settings.logo.url} />
       <ImageSetting title="Top header logo" settingKey="top_logo" url={settings.topLogo.url} />
       <ImageSetting title="Hero black background" settingKey="hero_background" url={settings.heroBackground.url} />
+
+      <Separator />
+
+      <IconSettingsSection icons={settings.icons} />
+
+      <Separator />
+
+      <NavigationSettingsSection navigation={settings.navigation} />
+
+      <Separator />
+
+      <ContentSettingsSection content={settings.content} />
+
+      <Separator />
+
+      <TypographySettingsSection typography={settings.typography} />
+
+      <Separator />
+
+      <BackgroundSettingsSection pageBackgrounds={settings.pageBackgrounds} />
     </div>
   );
 }

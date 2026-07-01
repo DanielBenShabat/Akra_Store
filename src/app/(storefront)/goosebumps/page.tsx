@@ -3,18 +3,20 @@ import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { ProductCard } from '@/components/product/ProductCard';
 import { getGoosebumpsProducts } from '@/lib/data-store';
+import { getPageBackgroundStyle } from '@/lib/page-background-style';
+import { getSiteSettings } from '@/lib/site-settings';
 
 export const metadata: Metadata = { title: 'Goosebumps' };
 
 export default async function GoosebumpsPage() {
-  const products = await getGoosebumpsProducts();
+  const [products, settings] = await Promise.all([getGoosebumpsProducts(), getSiteSettings()]);
 
   return (
     <>
       <Header />
-      <main className="flex-1">
+      <main className="flex-1" style={getPageBackgroundStyle(settings.pageBackgrounds.goosebumps)}>
         <div className="px-4 py-8">
-          <h1 className="text-section-title font-bold uppercase tracking-section mb-6">
+          <h1 className="text-page-title font-bold uppercase tracking-section mb-6">
             Goosebumps
           </h1>
 

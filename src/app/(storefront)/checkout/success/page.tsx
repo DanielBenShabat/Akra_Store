@@ -55,7 +55,7 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
 
           <div className="w-16 h-px bg-foreground" aria-hidden="true" />
 
-          <h1 className="text-section-title font-bold uppercase tracking-section">{text.title}</h1>
+          <h1 className="text-page-title font-bold uppercase tracking-section">{text.title}</h1>
 
           <p className="text-nav text-muted-foreground leading-relaxed">{text.body}</p>
 

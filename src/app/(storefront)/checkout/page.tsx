@@ -38,7 +38,7 @@ export default async function CheckoutPage({ searchParams }: Props) {
       <Header />
       <main className="flex-1">
         <div className="site-container py-10">
-          <h1 className="text-section-title font-bold uppercase tracking-section mb-8">Checkout</h1>
+          <h1 className="text-page-title font-bold uppercase tracking-section mb-8">Checkout</h1>
           <CheckoutClient
             mode={productId ? 'buynow' : 'cart'}
             buyNowItem={buyNowItem}

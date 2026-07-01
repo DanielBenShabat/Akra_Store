@@ -7,7 +7,7 @@ import { slugify } from './utils';
 import { getPaymentProvider } from '@/lib/payments';
 import { sendOrderConfirmationEmail } from '@/lib/email';
 import { siteConfig } from '@/config/site';
-import type { Product, Category, ArchiveItem, ShippingMethod, Order } from '@/types';
+import type { Product, Category, ArchiveItem, ProductStatus, ShippingMethod, Order } from '@/types';
 
 /**
  * Error whose message is safe to surface to the end user (business-rule
@@ -40,6 +40,7 @@ type DbProduct = {
   sizes: string[] | null;
   image_urls: string[] | null;
   is_goosebumps: boolean;
+  status: ProductStatus | null;
 };
 
 type DbCategory = {
@@ -60,6 +61,7 @@ function toProduct(row: DbProduct): Product {
     size: row.sizes && row.sizes.length > 0 ? row.sizes[0] : 'One Size',
     images: row.image_urls ?? [],
     isGoosebumps: row.is_goosebumps,
+    status: row.status ?? (row.stock < 1 ? 'unavailable' : 'available'),
   };
 }
 
@@ -82,16 +84,35 @@ function toRow(data: Partial<Omit<Product, 'id'>>): Record<string, unknown> {
   if ('images' in data) row.image_urls = data.images && data.images.length ? data.images : null;
   if ('categoryId' in data) row.category_id = data.categoryId ?? null;
   if ('isGoosebumps' in data) row.is_goosebumps = data.isGoosebumps;
+  if ('status' in data) row.status = data.status;
   return row;
 }
 
 // ── Products ──────────────────────────────────────────────────────────────────
 
 export async function getProducts(): Promise<Product[]> {
-  const { data, error } = await supabase.from('products').select('*');
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .order('display_order', { ascending: true, nullsFirst: false })
+    .order('name', { ascending: true });
   if (error) throw new Error(error.message);
   return (data as DbProduct[]).map(toProduct);
 }
+
+export const getArchiveProducts = unstable_cache(
+  async (): Promise<Product[]> => {
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .order('display_order', { ascending: true, nullsFirst: false })
+      .order('name', { ascending: true });
+    if (error) throw new Error(error.message);
+    return (data as DbProduct[]).map(toProduct).filter((product) => product.status === 'archive');
+  },
+  ['archive-products'],
+  { tags: [CACHE_TAGS.catalog], revalidate: CACHE_REVALIDATE_SECONDS },
+);
 
 export const getGoosebumpsProducts = unstable_cache(
   async (): Promise<Product[]> => {
@@ -99,9 +120,11 @@ export const getGoosebumpsProducts = unstable_cache(
       .from('products')
       .select('*')
       .eq('is_goosebumps', true)
-      .gt('stock', 0);
+      .gt('stock', 0)
+      .order('display_order', { ascending: true, nullsFirst: false })
+      .order('name', { ascending: true });
     if (error) throw new Error(error.message);
-    return (data as DbProduct[]).map(toProduct);
+    return (data as DbProduct[]).map(toProduct).filter((product) => product.status === 'available');
   },
   ['goosebumps-products'],
   { tags: [CACHE_TAGS.catalog], revalidate: CACHE_REVALIDATE_SECONDS },
@@ -174,7 +197,7 @@ export const getCategoriesWithProducts = unstable_cache(
 
     const byCategory = new Map<string, Product[]>();
     for (const p of prods) {
-      if (p.isGoosebumps) continue;
+      if (p.isGoosebumps || p.status !== 'available') continue;
       if (!p.categoryId) continue;
       if (!byCategory.has(p.categoryId)) byCategory.set(p.categoryId, []);
       byCategory.get(p.categoryId)!.push(p);
@@ -430,7 +453,7 @@ export async function createPendingOrder(
 
   const { data: products, error: productsError } = await supabase
     .from('products')
-    .select('id, name, price, stock')
+    .select('id, name, price, stock, status')
     .in('id', ids);
   if (productsError) throw new Error(productsError.message);
 
@@ -439,7 +462,7 @@ export async function createPendingOrder(
   for (const id of ids) {
     const product = byId.get(id);
     if (!product) throw new UserFacingError('One of your items is no longer available');
-    if (product.stock < 1) throw new UserFacingError(`${product.name} is sold out`);
+    if (product.status !== 'available' || product.stock < 1) throw new UserFacingError(`${product.name} is sold out`);
   }
 
   // Map each requested line to its authoritative product (quantity always 1).

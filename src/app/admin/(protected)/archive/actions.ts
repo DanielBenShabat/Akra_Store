@@ -35,12 +35,12 @@ export async function uploadArchiveImageAction(
   if (!file || file.size === 0) return { error: 'No file provided' };
 
   const ext = file.name.split('.').pop() ?? 'jpg';
-  const filename = `${crypto.randomUUID()}.${ext}`;
+  const filename = `archive/${crypto.randomUUID()}.${ext}`;
   const buffer = Buffer.from(await file.arrayBuffer());
 
   const { error } = await supabase.storage
     .from('product-images')
-    .upload(filename, buffer, { contentType: file.type });
+    .upload(filename, buffer, { contentType: file.type, upsert: false });
 
   if (error) {
     console.error('[admin] archive image upload failed', error);

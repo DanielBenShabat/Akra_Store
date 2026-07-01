@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Pencil, Trash2, Check, X as XIcon, Plus } from 'lucide-react';
+import { Pencil, Trash2, Check, X as XIcon, Plus, ArrowUp, ArrowDown } from 'lucide-react';
 import type { Category } from '@/types';
 import { Button } from '@/components/admin-ui/button';
 import { Input } from '@/components/admin-ui/input';
@@ -15,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/admin-ui/table';
-import { createCategoryAction, updateCategoryAction, deleteCategoryAction } from './actions';
+import { createCategoryAction, updateCategoryAction, deleteCategoryAction, reorderCategoriesAction } from './actions';
 
 interface Props {
   categories: Category[];
@@ -81,6 +81,22 @@ export default function CategoriesClient({ categories }: Props) {
     });
   }
 
+  function moveCategory(index: number, direction: -1 | 1) {
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= categories.length) return;
+    const reordered = [...categories];
+    const [removed] = reordered.splice(index, 1);
+    reordered.splice(newIndex, 0, removed);
+    startTransition(async () => {
+      const result = await reorderCategoriesAction(reordered.map((c) => c.id));
+      if (result.success) {
+        router.refresh();
+      } else {
+        toast.error(result.error ?? 'Failed to reorder');
+      }
+    });
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex gap-2">
@@ -120,7 +136,7 @@ export default function CategoriesClient({ categories }: Props) {
                 </TableCell>
               </TableRow>
             )}
-            {categories.map((cat) => (
+            {categories.map((cat, index) => (
               <TableRow key={cat.id}>
                 <TableCell className="font-medium">
                   {editingId === cat.id ? (
@@ -173,6 +189,24 @@ export default function CategoriesClient({ categories }: Props) {
                           aria-label={`Edit ${cat.name}`}
                         >
                           <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => moveCategory(index, -1)}
+                          disabled={isPending || index === 0}
+                          aria-label="Move up"
+                        >
+                          <ArrowUp className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => moveCategory(index, 1)}
+                          disabled={isPending || index === categories.length - 1}
+                          aria-label="Move down"
+                        >
+                          <ArrowDown className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"

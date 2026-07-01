@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
 import { ImageIcon, Loader2, X } from 'lucide-react';
-import type { Product, Category } from '@/types';
+import type { Product, Category, ProductStatus } from '@/types';
 import {
   Dialog,
   DialogContent,
@@ -40,6 +40,12 @@ const SIZE_OPTIONS = ['One Size', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '28', '30', 
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 
+const STATUS_OPTIONS: Array<{ value: ProductStatus; label: string; description: string }> = [
+  { value: 'available', label: 'Available', description: 'Shown in the shop and can be purchased.' },
+  { value: 'unavailable', label: 'Unavailable', description: 'Hidden from shoppers / sold out.' },
+  { value: 'archive', label: 'Archive', description: 'Shown on Archive only, no price and not clickable.' },
+];
+
 const productSchema = z
   .object({
     name: z.string().min(1, 'Name is required'),
@@ -49,12 +55,16 @@ const productSchema = z
     size: z.string().min(1, 'Size is required'),
     images: z.array(z.string()),
     isGoosebumps: z.boolean(),
-    isUnavailable: z.boolean(),
+    status: z.enum(['available', 'unavailable', 'archive']),
   })
   .refine((d) => d.isGoosebumps || d.categoryId.length > 0, {
     path: ['categoryId'],
     message: 'Select a category',
   });
+
+export interface ProductFormSubmitData {
+  product: Omit<Product, 'id'>;
+}
 
 type ProductFormValues = z.infer<typeof productSchema>;
 
@@ -62,10 +72,11 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   product?: Product | null;
-  onSubmit: (data: Omit<Product, 'id'>) => void;
+  onSubmit: (data: ProductFormSubmitData) => void;
   pending: boolean;
   categories: Category[];
   defaultIsGoosebumps?: boolean;
+  defaultStatus?: ProductStatus;
 }
 
 export default function ProductFormDialog({
@@ -76,6 +87,7 @@ export default function ProductFormDialog({
   pending,
   categories,
   defaultIsGoosebumps = false,
+  defaultStatus = 'available',
 }: Props) {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -90,7 +102,7 @@ export default function ProductFormDialog({
       size: 'One Size',
       images: [],
       isGoosebumps: false,
-      isUnavailable: false,
+      status: 'available',
     },
   });
 
@@ -109,7 +121,7 @@ export default function ProductFormDialog({
               size: product.size,
               images: product.images,
               isGoosebumps: product.isGoosebumps,
-              isUnavailable: product.stock < 1,
+              status: product.status,
             }
           : {
               name: '',
@@ -119,13 +131,13 @@ export default function ProductFormDialog({
               size: 'One Size',
               images: [],
               isGoosebumps: defaultIsGoosebumps,
-              isUnavailable: false,
+              status: defaultStatus,
             }
       );
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
-  }, [open, product, form, categories, defaultIsGoosebumps]);
+  }, [open, product, form, categories, defaultIsGoosebumps, defaultStatus]);
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const selected = Array.from(e.target.files ?? []);
@@ -181,17 +193,19 @@ export default function ProductFormDialog({
   }
 
   const handleSubmit = form.handleSubmit((data) => {
-    const cleaned: Omit<Product, 'id'> = {
+    const product: Omit<Product, 'id'> = {
       name: data.name,
       price: data.price,
-      stock: data.isUnavailable ? 0 : 1,
+      stock: data.status === 'available' ? 1 : 0,
       isGoosebumps: data.isGoosebumps,
       categoryId: data.isGoosebumps || !data.categoryId ? null : data.categoryId,
       description: data.description || undefined,
       images: data.images,
       size: data.size,
+      status: data.status,
     };
-    onSubmit(cleaned);
+
+    onSubmit({ product });
   });
 
   return (
@@ -303,32 +317,44 @@ export default function ProductFormDialog({
 
             <FormField
               control={form.control}
-              name="isUnavailable"
+              name="status"
               render={({ field }) => (
                 <FormItem>
-                  <button
-                    type="button"
-                    aria-pressed={field.value}
-                    onClick={() => field.onChange(!field.value)}
-                    className={cn(
-                      'flex w-full cursor-pointer items-center justify-between rounded-md border border-border p-4 text-left transition-all duration-150 active:scale-[0.98]',
-                      field.value
-                        ? 'border-foreground bg-foreground text-background shadow-md'
-                        : 'bg-background hover:border-foreground hover:shadow-sm',
-                    )}
-                  >
-                    <span className="text-sm font-medium">Make unavailable</span>
-                    <span
-                      className={cn(
-                        'rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide',
-                        field.value
-                          ? 'border-background text-background'
-                          : 'border-border text-muted-foreground',
-                      )}
-                    >
-                      {field.value ? '✓' : '○'}
-                    </span>
-                  </button>
+                  <FormLabel>Item status</FormLabel>
+                  <div className="grid gap-2">
+                    {STATUS_OPTIONS.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        aria-pressed={field.value === option.value}
+                        onClick={() => field.onChange(option.value)}
+                        className={cn(
+                          'flex w-full cursor-pointer items-center justify-between rounded-md border border-border p-3 text-left transition-all duration-150 active:scale-[0.98]',
+                          field.value === option.value
+                            ? 'border-foreground bg-foreground text-background shadow-md'
+                            : 'bg-background hover:border-foreground hover:shadow-sm',
+                        )}
+                      >
+                        <span>
+                          <span className="block text-sm font-medium">{option.label}</span>
+                          <span className={cn('block text-xs', field.value === option.value ? 'text-background/70' : 'text-muted-foreground')}>
+                            {option.description}
+                          </span>
+                        </span>
+                        <span
+                          className={cn(
+                            'rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide',
+                            field.value === option.value
+                              ? 'border-background text-background'
+                              : 'border-border text-muted-foreground',
+                          )}
+                        >
+                          {field.value === option.value ? '✓' : '○'}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  <FormMessage />
                 </FormItem>
               )}
             />

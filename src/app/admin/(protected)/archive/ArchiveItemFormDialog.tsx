@@ -16,13 +16,7 @@ import {
 } from '@/components/admin-ui/dialog';
 import {
   Form,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormControl,
-  FormMessage,
 } from '@/components/admin-ui/form';
-import { Input } from '@/components/admin-ui/input';
 import { Button } from '@/components/admin-ui/button';
 import { Label } from '@/components/admin-ui/label';
 import { uploadArchiveImageAction } from './actions';
@@ -188,87 +182,12 @@ export default function ArchiveItemFormDialog({
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
-              <FormField
-                control={form.control}
-                name="xPosition"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>X (%)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="0.1"
-                        value={Number.isNaN(field.value) ? '' : field.value}
-                        onChange={(e) => {
-                          const v = e.target.valueAsNumber;
-                          field.onChange(Number.isNaN(v) ? undefined : v);
-                        }}
-                        onBlur={field.onBlur}
-                        name={field.name}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="yPosition"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Y (%)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="0.1"
-                        value={Number.isNaN(field.value) ? '' : field.value}
-                        onChange={(e) => {
-                          const v = e.target.valueAsNumber;
-                          field.onChange(Number.isNaN(v) ? undefined : v);
-                        }}
-                        onBlur={field.onBlur}
-                        name={field.name}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="size"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Size (%)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min="10"
-                        max="100"
-                        step="0.1"
-                        value={Number.isNaN(field.value) ? '' : field.value}
-                        onChange={(e) => {
-                          const v = e.target.valueAsNumber;
-                          field.onChange(Number.isNaN(v) ? undefined : v);
-                        }}
-                        onBlur={field.onBlur}
-                        name={field.name}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
             <div className="space-y-2">
               <Label>Live Preview</Label>
-              <div className="relative w-full aspect-square rounded-md border border-border bg-muted overflow-hidden">
+              <p className="text-xs text-muted-foreground">
+                Legacy archive item positioning preview. Public archive now uses product status instead.
+              </p>
+              <div className="relative w-full aspect-[4/3] rounded-md border border-border bg-zinc-900 overflow-hidden">
                 {previewUrl && (
                   <div
                     className="absolute"
@@ -280,6 +199,11 @@ export default function ArchiveItemFormDialog({
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={previewUrl} alt="" className="w-full h-auto block" />
+                  </div>
+                )}
+                {!previewUrl && (
+                  <div className="flex items-center justify-center h-full text-xs text-muted-foreground">
+                    Upload an image to see preview
                   </div>
                 )}
               </div>

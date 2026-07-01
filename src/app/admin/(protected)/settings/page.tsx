@@ -11,7 +11,7 @@ export default async function SettingsPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Manage delivery prices, free delivery, logo, and homepage background.
+          Manage delivery prices, brand images, icons, navigation, page content, typography, and backgrounds.
         </p>
       </div>
       <SettingsClient settings={settings} />

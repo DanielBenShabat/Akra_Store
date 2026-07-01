@@ -23,11 +23,11 @@
   --color-accent-warning:   #D97706;
   --color-whatsapp:         #25D366;
 
-  /* Custom font sizes */
-  --text-nav:           0.875rem;    /* 14px */
-  --text-section-title: 1.375rem;   /* 22px */
-  --text-product-title: 1.1875rem;  /* 19px */
-  --text-price:         1rem;       /* 16px */
+  /* Typography (overridable via admin settings → CSS variables) */
+  --text-nav:           var(--akra-nav-size, 0.875rem);
+  --text-section-title: var(--akra-section-title-size, 1.375rem);
+  --text-product-title: var(--akra-product-title-size, 1.1875rem);
+  --text-price:         var(--akra-product-price-size, 1rem);
   --text-badge:         0.8125rem;  /* 13px */
   --text-view-all:      0.8125rem;  /* 13px */
 
@@ -93,6 +93,56 @@ body {
 }
 
 /* ─── Custom utility classes ────────────────────────────────────────────── */
+.text-nav {
+  font-size: var(--akra-nav-size, 0.875rem);
+}
+
+.text-page-title {
+  font-size: var(--akra-page-title-size, 1.5rem);
+}
+
+.text-section-title {
+  font-size: var(--akra-section-title-size, 1.375rem);
+}
+
+.text-product-title {
+  font-size: var(--akra-product-title-size, 1.1875rem);
+}
+
+.text-price {
+  font-size: var(--akra-product-price-size, 1rem);
+}
+
+.text-body {
+  font-size: var(--akra-body-size, 0.875rem);
+}
+
+@media (min-width: 768px) {
+  .text-nav {
+    font-size: var(--akra-nav-size-desktop, var(--akra-nav-size, 0.875rem));
+  }
+
+  .text-page-title {
+    font-size: var(--akra-page-title-size-desktop, var(--akra-page-title-size, 1.5rem));
+  }
+
+  .text-section-title {
+    font-size: var(--akra-section-title-size-desktop, var(--akra-section-title-size, 1.375rem));
+  }
+
+  .text-product-title {
+    font-size: var(--akra-product-title-size-desktop, var(--akra-product-title-size, 1.1875rem));
+  }
+
+  .text-price {
+    font-size: var(--akra-product-price-size-desktop, var(--akra-product-price-size, 1rem));
+  }
+
+  .text-body {
+    font-size: var(--akra-body-size-desktop, var(--akra-body-size, 0.875rem));
+  }
+}
+
 @utility h-topbar {
   height: var(--topbar-height);
 }

@@ -3,6 +3,7 @@
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { createCategory, updateCategory, deleteCategory, CACHE_TAGS } from '@/lib/data-store';
 import { assertAdmin } from '@/lib/admin-auth';
+import { supabase } from '@/lib/supabase';
 
 type ActionResult = { success: boolean; error?: string };
 
@@ -11,6 +12,34 @@ function revalidateCatalog(): void {
   revalidateTag(CACHE_TAGS.catalog, 'max');
   revalidatePath('/admin/categories');
   revalidatePath('/', 'layout');
+}
+
+export async function reorderCategoriesAction(orderedIds: string[]): Promise<ActionResult> {
+  await assertAdmin();
+  try {
+    const updates = orderedIds.map((id, index) => ({
+      id,
+      display_order: index,
+    }));
+    const results = await Promise.allSettled(
+      updates.map((u) =>
+        supabase
+          .from('categories')
+          .update({ display_order: u.display_order })
+          .eq('id', u.id),
+      ),
+    );
+    const failures = results.filter((r) => r.status === 'rejected');
+    if (failures.length > 0) {
+      console.error('[admin] reorderCategories failures', failures);
+      return { success: false, error: `${failures.length} category(ies) failed to reorder` };
+    }
+    revalidateCatalog();
+    return { success: true };
+  } catch (e) {
+    console.error('[admin] reorderCategories failed', e);
+    return { success: false, error: 'Failed to reorder categories' };
+  }
 }
 
 export async function createCategoryAction(name: string): Promise<ActionResult> {

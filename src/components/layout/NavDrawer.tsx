@@ -4,7 +4,17 @@ import Link from 'next/link';
 import { X } from 'lucide-react';
 import { useNav } from './NavContext';
 
-const navLinks = [
+interface NavItem {
+  label: string;
+  href: string;
+}
+
+interface Props {
+  items?: NavItem[];
+  closeIconUrl?: string | null;
+}
+
+const defaultNavLinks: NavItem[] = [
   { label: 'Archive', href: '/archive' },
   { label: 'Available', href: '/available' },
   { label: 'Goosebumps', href: '/goosebumps' },
@@ -13,7 +23,8 @@ const navLinks = [
   { label: 'FAQ', href: '/faq' },
 ];
 
-export function NavDrawer() {
+export function NavDrawer({ items, closeIconUrl }: Props) {
+  const navLinks = items && items.length > 0 ? items : defaultNavLinks;
   const { navOpen, closeNav } = useNav();
 
   if (!navOpen) return null;
@@ -41,7 +52,12 @@ export function NavDrawer() {
             className="p-2 text-muted-foreground hover:text-foreground transition-colors"
             style={{ touchAction: 'manipulation', cursor: 'pointer' }}
           >
-            <X size={18} strokeWidth={1.5} />
+            {closeIconUrl ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img src={closeIconUrl} alt="" className="h-[18px] w-[18px] object-contain" />
+            ) : (
+              <X size={18} strokeWidth={1.5} />
+            )}
           </button>
         </div>
 
