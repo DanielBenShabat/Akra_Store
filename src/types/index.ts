@@ -13,6 +13,8 @@ export interface ArchiveItem {
   size: number;
 }
 
+export type ProductStatus = 'available' | 'unavailable' | 'archive';
+
 export interface Product {
   id: string;
   name: string;
@@ -23,6 +25,7 @@ export interface Product {
   size: string;
   images: string[];
   isGoosebumps: boolean;
+  status: ProductStatus;
 }
 
 /**

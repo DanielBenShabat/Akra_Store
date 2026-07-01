@@ -35,7 +35,7 @@ export default async function CategoryPage({
       <Header />
       <main className="flex-1">
         <div className="px-4 py-8">
-          <h1 className="text-section-title font-bold uppercase tracking-section mb-6">
+          <h1 className="text-page-title font-bold uppercase tracking-section mb-6">
             {category.name}
           </h1>
 

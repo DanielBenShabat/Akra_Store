@@ -16,7 +16,7 @@ export async function HeroSection() {
               backgroundSize: 'cover',
               backgroundPosition: 'center',
             }
-          : undefined
+          : { backgroundColor: '#1a1a1a' }
       }
     >
       <h1 id="hero-heading" className="sr-only">AKRA</h1>
