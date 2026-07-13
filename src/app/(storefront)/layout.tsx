@@ -1,3 +1,4 @@
+import Script from 'next/script';
 import { NavProvider } from '@/components/layout/NavContext';
 import { NavDrawer } from '@/components/layout/NavDrawer';
 import { CartDrawer } from '@/components/cart/CartDrawer';
@@ -13,8 +14,16 @@ export default async function StorefrontLayout({ children }: { children: React.R
 
   const typographyStyle = getTypographyVars(settings.typography);
 
+  // Umami visitor analytics — storefront only (this layout excludes /admin),
+  // so the owner's admin work doesn't pollute the numbers.
+  const umamiSrc = process.env.NEXT_PUBLIC_UMAMI_SRC;
+  const umamiWebsiteId = process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID;
+
   return (
     <NavProvider>
+      {umamiSrc && umamiWebsiteId && (
+        <Script src={umamiSrc} data-website-id={umamiWebsiteId} strategy="afterInteractive" />
+      )}
       <div
         className="max-w-[430px] mx-auto min-h-screen relative bg-background shadow-2xl flex flex-col"
         style={typographyStyle}

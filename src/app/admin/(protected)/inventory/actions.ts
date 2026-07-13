@@ -4,6 +4,7 @@ import { revalidatePath, revalidateTag } from 'next/cache';
 import { createProduct, updateProduct, deleteProduct, CACHE_TAGS } from '@/lib/data-store';
 import { assertAdmin } from '@/lib/admin-auth';
 import { supabase } from '@/lib/supabase';
+import { prepareUploadImage } from '@/lib/image-processing';
 import type { Product, ProductStatus } from '@/types';
 
 type ProductFormValues = Omit<Product, 'id'>;
@@ -175,13 +176,12 @@ export async function uploadProductImageAction(
   const file = formData.get('file') as File | null;
   if (!file || file.size === 0) return { error: 'No file provided' };
 
-  const ext = file.name.split('.').pop() ?? 'jpg';
+  const { buffer, contentType, ext } = await prepareUploadImage(file);
   const filename = `${crypto.randomUUID()}.${ext}`;
-  const buffer = Buffer.from(await file.arrayBuffer());
 
   const { error } = await supabase.storage
     .from('product-images')
-    .upload(filename, buffer, { contentType: file.type });
+    .upload(filename, buffer, { contentType });
 
   if (error) {
     console.error('[admin] product image upload failed', error);

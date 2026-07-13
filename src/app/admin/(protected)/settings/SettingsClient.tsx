@@ -10,6 +10,7 @@ import { Label } from '@/components/admin-ui/label';
 import { Checkbox } from '@/components/admin-ui/checkbox';
 import { Separator } from '@/components/admin-ui/separator';
 import type { SiteSettings } from '@/lib/site-settings';
+import { uploadSizeError } from '@/lib/upload-limits';
 import {
   clearSettingImageAction,
   updateShippingSettingsAction,
@@ -40,6 +41,11 @@ function ImageSetting({
 
   function handleUpload(file: File | undefined) {
     if (!file) return;
+    const sizeError = uploadSizeError(file);
+    if (sizeError) {
+      toast.error(sizeError);
+      return;
+    }
     startTransition(async () => {
       const formData = new FormData();
       formData.append('key', settingKey);

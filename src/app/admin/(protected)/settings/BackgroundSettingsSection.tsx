@@ -8,6 +8,7 @@ import { Button } from '@/components/admin-ui/button';
 import { Input } from '@/components/admin-ui/input';
 import { Label } from '@/components/admin-ui/label';
 import type { PageBackgroundSetting, PageBackgroundSettings } from '@/lib/site-settings';
+import { uploadSizeError } from '@/lib/upload-limits';
 import { uploadSettingImageAction, updatePageBackgroundsSettingsAction } from './actions';
 
 interface Props {
@@ -66,6 +67,11 @@ export default function BackgroundSettingsSection({ pageBackgrounds }: Props) {
   const [backgrounds, setBackgrounds] = useState(pageBackgrounds);
 
   async function handleUpload(pageKey: string, file: File) {
+    const sizeError = uploadSizeError(file);
+    if (sizeError) {
+      toast.error(sizeError);
+      return;
+    }
     setUploadingKey(pageKey);
     try {
       const formData = new FormData();
