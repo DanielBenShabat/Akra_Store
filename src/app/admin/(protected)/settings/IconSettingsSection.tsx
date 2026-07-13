@@ -8,6 +8,7 @@ import { Button } from '@/components/admin-ui/button';
 import { Input } from '@/components/admin-ui/input';
 import { Label } from '@/components/admin-ui/label';
 import type { IconSettings, IconSlot } from '@/lib/site-settings';
+import { uploadSizeError } from '@/lib/upload-limits';
 import { uploadSettingImageAction, updateIconsSettingsAction } from './actions';
 
 const ICON_SLOTS: { key: IconSlot; label: string }[] = [
@@ -28,6 +29,11 @@ export default function IconSettingsSection({ icons }: Props) {
   const [pendingSlot, setPendingSlot] = useState<string | null>(null);
 
   async function handleUpload(slot: IconSlot, file: File) {
+    const sizeError = uploadSizeError(file);
+    if (sizeError) {
+      toast.error(sizeError);
+      return;
+    }
     setPendingSlot(slot);
     try {
       // Upload image to settings/icons/ path

@@ -1,7 +1,6 @@
 'use server';
 
 import { revalidatePath, revalidateTag } from 'next/cache';
-import sharp from 'sharp';
 import { assertAdmin } from '@/lib/admin-auth';
 import {
   SETTINGS_CACHE_TAG,
@@ -12,6 +11,7 @@ import {
   type ShippingSettings,
 } from '@/lib/site-settings';
 import { supabase } from '@/lib/supabase';
+import { processSettingImage } from '@/lib/image-processing';
 
 type ActionResult = { success: boolean; error?: string; url?: string };
 
@@ -65,21 +65,21 @@ export async function uploadSettingImageAction(formData: FormData): Promise<Acti
   }
 
   try {
-    const subfolder = isIcon ? 'icons' : isBg ? 'backgrounds' : 'logos';
-    const filename = `settings/${subfolder}/${key}-${crypto.randomUUID()}.png`;
+    // hero_background is a photo like the bg_* keys — treating it as a
+    // logo would trim edges and bloat it into a giant PNG.
+    const isBackground = isBg || key === 'hero_background';
+    const subfolder = isIcon ? 'icons' : isBackground ? 'backgrounds' : 'logos';
     const inputBuffer = Buffer.from(await file.arrayBuffer());
 
-    // Only trim/rotate for logos/icons, not for backgrounds
-    let buffer: Buffer;
-    if (isBg) {
-      buffer = await sharp(inputBuffer).rotate().png().toBuffer();
-    } else {
-      buffer = await sharp(inputBuffer).rotate().trim({ threshold: 10 }).png().toBuffer();
-    }
+    const { buffer, contentType, ext } = await processSettingImage(
+      inputBuffer,
+      isBackground ? 'background' : 'graphic',
+    );
+    const filename = `settings/${subfolder}/${key}-${crypto.randomUUID()}.${ext}`;
 
     const { error } = await supabase.storage
       .from('product-images')
-      .upload(filename, buffer, { contentType: 'image/png', upsert: false });
+      .upload(filename, buffer, { contentType, upsert: false });
     if (error) throw new Error(error.message);
 
     const { data } = supabase.storage.from('product-images').getPublicUrl(filename);

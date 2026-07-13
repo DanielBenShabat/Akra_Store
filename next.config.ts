@@ -19,7 +19,9 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: localDevOrigins(),
   experimental: {
     serverActions: {
-      bodySizeLimit: '10mb',
+      // Phone photos routinely exceed 10mb; the client guards at 20mb
+      // (src/lib/upload-limits.ts) and the server downscales after receipt.
+      bodySizeLimit: '25mb',
     },
   },
   images: {

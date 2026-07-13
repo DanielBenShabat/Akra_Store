@@ -9,6 +9,7 @@ import {
 } from '@/lib/data-store';
 import { assertAdmin } from '@/lib/admin-auth';
 import { supabase } from '@/lib/supabase';
+import { prepareUploadImage } from '@/lib/image-processing';
 import type { ArchiveItem } from '@/types';
 
 type ArchiveItemValues = Omit<ArchiveItem, 'id'>;
@@ -34,13 +35,12 @@ export async function uploadArchiveImageAction(
   const file = formData.get('file') as File | null;
   if (!file || file.size === 0) return { error: 'No file provided' };
 
-  const ext = file.name.split('.').pop() ?? 'jpg';
+  const { buffer, contentType, ext } = await prepareUploadImage(file);
   const filename = `archive/${crypto.randomUUID()}.${ext}`;
-  const buffer = Buffer.from(await file.arrayBuffer());
 
   const { error } = await supabase.storage
     .from('product-images')
-    .upload(filename, buffer, { contentType: file.type, upsert: false });
+    .upload(filename, buffer, { contentType, upsert: false });
 
   if (error) {
     console.error('[admin] archive image upload failed', error);
