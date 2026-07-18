@@ -11,6 +11,7 @@ import {
 } from '@/lib/umami';
 import { getProducts } from '@/lib/data-store';
 import VisitorsChart, { type DayPoint } from './VisitorsChart';
+import { TrackingToggle } from './TrackingToggle';
 
 export const dynamic = 'force-dynamic';
 
@@ -285,6 +286,8 @@ export default async function StatisticsPage({
             empty="No item views recorded in this period yet."
           />
         </div>
+
+        <TrackingToggle />
       </div>
     );
   } catch (e) {
