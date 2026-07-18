@@ -17,6 +17,15 @@ export const dynamic = 'force-dynamic';
 
 const TIMEZONE = 'Asia/Jerusalem';
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+// Referrers treated as owner/internal traffic and hidden from the breakdown —
+// e.g. clicks from the repo's "Live at akrastudioz.com" README link.
+const IGNORED_REFERRERS = ['github.com'];
+function isIgnoredReferrer(host: string | null): boolean {
+  if (!host) return false;
+  const h = host.toLowerCase();
+  return IGNORED_REFERRERS.some((d) => h === d || h.endsWith(`.${d}`));
+}
 const RANGES = [7, 30, 90] as const;
 
 /** Epoch ms of local midnight in the store's timezone (server may run in UTC). */
@@ -162,18 +171,23 @@ export default async function StatisticsPage({
   const rangeStart = todayStart - (range - 1) * DAY_MS;
 
   try {
-    const [todayStats, rangeStats, series, referrers, paths, events, products] =
+    const [todayStats, rangeStats, series, referrersRaw, paths, events, products] =
       await Promise.all([
         getStats(todayStart, now),
         getStats(rangeStart, now),
         getPageviewsSeries(rangeStart, now, TIMEZONE),
-        getMetrics('referrer', rangeStart, now, 8),
+        // Over-fetch so hiding ignored referrers doesn't leave a short list.
+        getMetrics('referrer', rangeStart, now, 15),
         // Pull a deep path list so we can both list top pages and slice out the
         // per-product detail views for the funnel below.
         getMetrics('path', rangeStart, now, 100),
         getEventMetrics(rangeStart, now, 100),
         getProducts(),
       ]);
+
+    // Drop owner/internal referrers (e.g. the GitHub README link), then trim
+    // back to the top 8 for display.
+    const referrers = referrersRaw.filter((r) => !isIgnoredReferrer(r.x)).slice(0, 8);
 
     // "Most viewed pages" — human-facing pages only; the noisy per-product
     // detail URLs get their own named breakdown in the funnel section.
