@@ -6,14 +6,26 @@ import {
   getStats,
   getPageviewsSeries,
   getMetrics,
+  getEventMetrics,
   type MetricRow,
 } from '@/lib/umami';
+import { getProducts } from '@/lib/data-store';
 import VisitorsChart, { type DayPoint } from './VisitorsChart';
+import { TrackingToggle } from './TrackingToggle';
 
 export const dynamic = 'force-dynamic';
 
 const TIMEZONE = 'Asia/Jerusalem';
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+// Referrers treated as owner/internal traffic and hidden from the breakdown —
+// e.g. clicks from the repo's "Live at akrastudioz.com" README link.
+const IGNORED_REFERRERS = ['github.com'];
+function isIgnoredReferrer(host: string | null): boolean {
+  if (!host) return false;
+  const h = host.toLowerCase();
+  return IGNORED_REFERRERS.some((d) => h === d || h.endsWith(`.${d}`));
+}
 const RANGES = [7, 30, 90] as const;
 
 /** Epoch ms of local midnight in the store's timezone (server may run in UTC). */
@@ -74,6 +86,47 @@ function BarList({ title, rows, empty }: { title: string; rows: { label: string;
   );
 }
 
+/** Purchase funnel: each stage's bar is scaled to the first (widest) stage,
+ *  with a step-over-step conversion rate next to the count. */
+function Funnel({ stages }: { stages: { label: string; value: number }[] }) {
+  const top = Math.max(stages[0]?.value ?? 0, 1);
+  return (
+    <div className="rounded-md border border-border p-4">
+      <h2 className="text-sm font-medium">Purchase funnel</h2>
+      <p className="mt-0.5 text-xs text-muted-foreground">
+        Views &amp; checkout reached come from page visits; add-to-cart &amp; buy attempts are
+        tracked events (counted from launch onward).
+      </p>
+      <div className="mt-3 space-y-1.5">
+        {stages.map((stage, i) => {
+          const prev = i === 0 ? null : stages[i - 1].value;
+          const pct = prev && prev > 0 ? Math.round((stage.value / prev) * 100) : null;
+          return (
+            <div
+              key={stage.label}
+              className="relative h-9 overflow-hidden rounded-[4px] border border-border/60"
+            >
+              <div
+                className="absolute inset-y-0 left-0 rounded-[4px]"
+                style={{ width: `${(stage.value / top) * 100}%`, backgroundColor: 'rgba(42, 120, 214, 0.14)' }}
+              />
+              <div className="relative flex h-full items-center justify-between gap-3 px-2.5">
+                <span className="text-sm">{stage.label}</span>
+                <span className="tabular-nums">
+                  <span className="text-sm font-semibold">{stage.value.toLocaleString()}</span>
+                  {pct !== null && (
+                    <span className="ml-2 text-xs text-muted-foreground">{pct}%</span>
+                  )}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function referrerLabel(row: MetricRow): string {
   if (!row.x) return 'Direct / none';
   return row.x;
@@ -118,13 +171,52 @@ export default async function StatisticsPage({
   const rangeStart = todayStart - (range - 1) * DAY_MS;
 
   try {
-    const [todayStats, rangeStats, series, referrers, pages] = await Promise.all([
-      getStats(todayStart, now),
-      getStats(rangeStart, now),
-      getPageviewsSeries(rangeStart, now, TIMEZONE),
-      getMetrics('referrer', rangeStart, now, 8),
-      getMetrics('url', rangeStart, now, 8),
-    ]);
+    const [todayStats, rangeStats, series, referrersRaw, paths, events, products] =
+      await Promise.all([
+        getStats(todayStart, now),
+        getStats(rangeStart, now),
+        getPageviewsSeries(rangeStart, now, TIMEZONE),
+        // Over-fetch so hiding ignored referrers doesn't leave a short list.
+        getMetrics('referrer', rangeStart, now, 15),
+        // Pull a deep path list so we can both list top pages and slice out the
+        // per-product detail views for the funnel below.
+        getMetrics('path', rangeStart, now, 100),
+        getEventMetrics(rangeStart, now, 100),
+        getProducts(),
+      ]);
+
+    // Drop owner/internal referrers (e.g. the GitHub README link), then trim
+    // back to the top 8 for display.
+    const referrers = referrersRaw.filter((r) => !isIgnoredReferrer(r.x)).slice(0, 8);
+
+    // "Most viewed pages" — human-facing pages only; the noisy per-product
+    // detail URLs get their own named breakdown in the funnel section.
+    const pages = paths.filter((p) => !p.x?.startsWith('/product/')).slice(0, 8);
+
+    // Purchase funnel. Views and "reached checkout" are read straight from page
+    // visits (retroactive); add-to-cart and buy attempts are custom events, so
+    // they only accumulate from the deploy that introduced them onward.
+    const PRODUCT_PREFIX = '/product/';
+    const nameById = new Map(products.map((p) => [p.id, p.name]));
+    const itemViewRows = paths
+      .filter((p) => p.x?.startsWith(PRODUCT_PREFIX))
+      .map((p) => ({
+        label: nameById.get(p.x!.slice(PRODUCT_PREFIX.length)) ?? 'Removed / unknown item',
+        value: p.y,
+      }))
+      .sort((a, b) => b.value - a.value);
+
+    const itemViews = itemViewRows.reduce((sum, r) => sum + r.value, 0);
+    const reachedCheckout = paths.find((p) => p.x === '/checkout')?.y ?? 0;
+    const addToCart = events.find((e) => e.x === 'add-to-cart')?.y ?? 0;
+    const triedToBuy = events.find((e) => e.x === 'checkout-submit')?.y ?? 0;
+
+    const funnelStages = [
+      { label: 'Viewed an item', value: itemViews },
+      { label: 'Added to cart', value: addToCart },
+      { label: 'Reached checkout', value: reachedCheckout },
+      { label: 'Tried to buy', value: triedToBuy },
+    ];
 
     // Umami omits empty buckets; rebuild a continuous day axis so the chart
     // doesn't silently skip quiet days.
@@ -142,7 +234,7 @@ export default async function StatisticsPage({
     });
 
     const avgDuration =
-      rangeStats.visits.value > 0 ? rangeStats.totaltime.value / rangeStats.visits.value : 0;
+      rangeStats.visits > 0 ? rangeStats.totaltime / rangeStats.visits : 0;
 
     return (
       <div className="space-y-4">
@@ -168,11 +260,11 @@ export default async function StatisticsPage({
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatTile label="Visitors today" value={todayStats.visitors.value.toLocaleString()} />
-          <StatTile label="Page views today" value={todayStats.pageviews.value.toLocaleString()} />
+          <StatTile label="Visitors today" value={todayStats.visitors.toLocaleString()} />
+          <StatTile label="Page views today" value={todayStats.pageviews.toLocaleString()} />
           <StatTile
             label={`Visitors, last ${range} days`}
-            value={rangeStats.visitors.value.toLocaleString()}
+            value={rangeStats.visitors.toLocaleString()}
           />
           <StatTile
             label="Average time on site"
@@ -199,6 +291,17 @@ export default async function StatisticsPage({
             empty="No page views recorded in this period yet."
           />
         </div>
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Funnel stages={funnelStages} />
+          <BarList
+            title="Most viewed items"
+            rows={itemViewRows}
+            empty="No item views recorded in this period yet."
+          />
+        </div>
+
+        <TrackingToggle />
       </div>
     );
   } catch (e) {

@@ -20,6 +20,10 @@ logo/
 /.next/
 /out/
 
+.wolf/
+.opencode/
+.codex/
+.cursor/
 # production
 /build
 

@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { formatPrice } from '@/lib/utils';
 import { siteConfig } from '@/config/site';
 import { cartSubtotal } from '@/lib/cart-store';
+import { track } from '@/lib/track';
 import { ISRAELI_CITIES, isValidCity } from '@/lib/israeli-cities';
 import type { CartItem, ShippingMethod } from '@/types';
 import type { ShippingSettings } from '@/lib/site-settings';
@@ -138,6 +139,10 @@ export function CheckoutForm({ items, symbol, shippingSettings, paymentFailed, b
   }, [selectedMethod, productIdsKey]);
 
   async function onSubmit(data: CheckoutFormValues) {
+    // Funnel: fired once the form validates and the shopper commits to paying,
+    // just before we create the pending order and hand off to the gateway.
+    track('checkout-submit', { items: items.length, value: totals.total });
+
     const { shippingMethod, ...shipping } = data;
     const result = await createPendingOrderAction({
       items: items.map((i) => ({ productId: i.productId, size: i.size })),
