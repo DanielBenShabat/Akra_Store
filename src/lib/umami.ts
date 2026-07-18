@@ -48,20 +48,34 @@ async function apiGet<T>(path: string, params: Record<string, string | number>):
   return (await res.json()) as T;
 }
 
-// Umami has returned both `{ value, prev }` and `{ value, change }` shapes
-// across versions; read `value` and tolerate the rest.
-type StatValue = { value: number };
+// `/stats` shape has drifted across Umami versions: older builds wrapped each
+// metric in `{ value, prev }` / `{ value, change }`, the current build returns
+// flat numbers plus a `comparison` object. Normalise everything to plain
+// numbers so callers don't care which version is deployed.
+type RawStat = number | { value?: number } | null | undefined;
+
+function statValue(v: RawStat): number {
+  if (typeof v === 'number') return v;
+  return v?.value ?? 0;
+}
 
 export type UmamiStats = {
-  pageviews: StatValue;
-  visitors: StatValue;
-  visits: StatValue;
-  bounces: StatValue;
-  totaltime: StatValue;
+  pageviews: number;
+  visitors: number;
+  visits: number;
+  bounces: number;
+  totaltime: number;
 };
 
 export async function getStats(startAt: number, endAt: number): Promise<UmamiStats> {
-  return apiGet<UmamiStats>('/stats', { startAt, endAt });
+  const raw = await apiGet<Record<keyof UmamiStats, RawStat>>('/stats', { startAt, endAt });
+  return {
+    pageviews: statValue(raw.pageviews),
+    visitors: statValue(raw.visitors),
+    visits: statValue(raw.visits),
+    bounces: statValue(raw.bounces),
+    totaltime: statValue(raw.totaltime),
+  };
 }
 
 export type SeriesPoint = { x: string; y: number };
@@ -77,11 +91,23 @@ export async function getPageviewsSeries(
 
 export type MetricRow = { x: string | null; y: number };
 
+// Note: this Umami version names the page-path metric `path` (older builds used
+// `url`). Pass the current name straight through.
 export async function getMetrics(
-  type: 'url' | 'referrer' | 'browser' | 'device' | 'country',
+  type: 'path' | 'referrer' | 'browser' | 'device' | 'country',
   startAt: number,
   endAt: number,
   limit = 10,
 ): Promise<MetricRow[]> {
   return apiGet<MetricRow[]>('/metrics', { type, startAt, endAt, limit });
+}
+
+// Counts per custom event name (e.g. the funnel's `add-to-cart` and
+// `checkout-submit` events fired from lib/track). `x` is the event name.
+export async function getEventMetrics(
+  startAt: number,
+  endAt: number,
+  limit = 100,
+): Promise<MetricRow[]> {
+  return apiGet<MetricRow[]>('/metrics', { type: 'event', startAt, endAt, limit });
 }

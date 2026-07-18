@@ -3,6 +3,7 @@
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
 import { useCartStore } from '@/lib/cart-store';
+import { track } from '@/lib/track';
 import type { Product } from '@/types';
 
 interface ProductActionsProps {
@@ -26,6 +27,7 @@ export function ProductActions({ product }: ProductActionsProps) {
     if (result === 'exists') {
       toast.info('This item is already in your cart');
     } else {
+      track('add-to-cart', { product: product.name });
       toast.success('Added to cart');
     }
   }
