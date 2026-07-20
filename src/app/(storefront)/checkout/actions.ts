@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { createPendingOrder, quoteOrderTotals, UserFacingError } from '@/lib/data-store';
 import { isValidCity } from '@/lib/israeli-cities';
 
-const shippingMethodSchema = z.enum(['express', 'standard', 'pickup']);
+const shippingMethodSchema = z.enum(['standard', 'pickup']);
 
 const lineItemSchema = z.object({
   productId: z.string().min(1),

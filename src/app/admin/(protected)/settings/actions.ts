@@ -35,12 +35,13 @@ function numberFromForm(formData: FormData, key: string): number {
 export async function updateShippingSettingsAction(formData: FormData): Promise<ActionResult> {
   await assertAdmin();
   try {
+    const deliveryLink = (formData.get('deliveryPaymentLink') as string | null)?.trim();
     const settings: ShippingSettings = {
-      expressFee: numberFromForm(formData, 'expressFee'),
       standardFee: numberFromForm(formData, 'standardFee'),
       pickupFee: numberFromForm(formData, 'pickupFee'),
       freeStandardEnabled: formData.get('freeStandardEnabled') === 'on',
       freeStandardThreshold: numberFromForm(formData, 'freeStandardThreshold'),
+      deliveryPaymentLink: deliveryLink ? deliveryLink : null,
     };
     await updateShippingSettings(settings);
     revalidateSettings();

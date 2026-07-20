@@ -26,15 +26,19 @@ export interface Product {
   images: string[];
   isGoosebumps: boolean;
   status: ProductStatus;
+  /**
+   * Grow hosted payment link for this specific piece (1-of-1 → one link per item).
+   * Null until the admin pastes it. Used by the `links` payment provider at checkout.
+   */
+  paymentLink: string | null;
 }
 
 /**
  * How an order is fulfilled:
- * - `express`  — courier to address, up to 3 business days (40₪, free over threshold)
- * - `standard` — courier to address, up to 10 business days (25₪, free over threshold)
+ * - `standard` — courier to address (fee configurable, free over threshold)
  * - `pickup`   — self-pickup, Modi'in area by prior arrangement (free)
  */
-export type ShippingMethod = 'express' | 'standard' | 'pickup';
+export type ShippingMethod = 'standard' | 'pickup';
 
 /**
  * A line in the cart / checkout. Under the 1-of-1 model every entry is a unique

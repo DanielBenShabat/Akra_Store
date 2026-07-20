@@ -56,6 +56,12 @@ const productSchema = z
     images: z.array(z.string()),
     isGoosebumps: z.boolean(),
     status: z.enum(['available', 'unavailable', 'archive']),
+    paymentLink: z
+      .string()
+      .trim()
+      .url('Enter a valid link (https://…)')
+      .optional()
+      .or(z.literal('')),
   })
   .refine((d) => d.isGoosebumps || d.categoryId.length > 0, {
     path: ['categoryId'],
@@ -103,6 +109,7 @@ export default function ProductFormDialog({
       images: [],
       isGoosebumps: false,
       status: 'available',
+      paymentLink: '',
     },
   });
 
@@ -122,6 +129,7 @@ export default function ProductFormDialog({
               images: product.images,
               isGoosebumps: product.isGoosebumps,
               status: product.status,
+              paymentLink: product.paymentLink ?? '',
             }
           : {
               name: '',
@@ -132,6 +140,7 @@ export default function ProductFormDialog({
               images: [],
               isGoosebumps: defaultIsGoosebumps,
               status: defaultStatus,
+              paymentLink: '',
             }
       );
       setIsUploading(false);
@@ -203,6 +212,7 @@ export default function ProductFormDialog({
       images: data.images,
       size: data.size,
       status: data.status,
+      paymentLink: data.paymentLink ? data.paymentLink.trim() : null,
     };
 
     onSubmit({ product });
@@ -395,6 +405,24 @@ export default function ProductFormDialog({
                   <FormControl>
                     <Textarea placeholder="Product description (optional)" rows={3} {...field} />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="paymentLink"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Grow payment link</FormLabel>
+                  <FormControl>
+                    <Input type="url" placeholder="https://pay.grow.link/…" {...field} />
+                  </FormControl>
+                  <p className="text-xs text-muted-foreground">
+                    The Grow link that charges for this exact piece. Required for checkout when the
+                    site uses Grow payment links.
+                  </p>
                   <FormMessage />
                 </FormItem>
               )}

@@ -15,8 +15,8 @@ export interface PricedLine {
 
 /**
  * Server-side source of truth for shipping cost. Standard delivery is waived
- * once the subtotal crosses the free-shipping threshold; express remains paid;
- * free methods (e.g. `pickup`) are always 0.
+ * once the subtotal crosses the free-shipping threshold; free methods (e.g.
+ * `pickup`) are always 0.
  */
 export function shippingFor(
   subtotal: number,
@@ -24,12 +24,7 @@ export function shippingFor(
   settings: ShippingSettings,
 ): number {
   if (subtotal <= 0) return 0;
-  const flatFee =
-    method === 'express'
-      ? settings.expressFee
-      : method === 'standard'
-        ? settings.standardFee
-        : settings.pickupFee;
+  const flatFee = method === 'standard' ? settings.standardFee : settings.pickupFee;
   if (flatFee === 0) return 0;
   if (
     method === 'standard' &&
