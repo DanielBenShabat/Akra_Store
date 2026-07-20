@@ -8,16 +8,11 @@ export const SETTINGS_CACHE_TAG = 'site-settings';
 // ── Existing types ──
 
 export interface ShippingSettings {
+  expressFee: number;
   standardFee: number;
   pickupFee: number;
   freeStandardEnabled: boolean;
   freeStandardThreshold: number;
-  /**
-   * Shared Grow payment link for the flat Standard-delivery fee. When the
-   * `links` payment provider is active and the customer picks Standard delivery,
-   * this link is shown as a second payment step on the pay page. Null when unset.
-   */
-  deliveryPaymentLink: string | null;
 }
 
 export interface ImageSetting {
@@ -186,11 +181,11 @@ const DEFAULT_PAGE_BACKGROUNDS: PageBackgroundSettings = {
 
 export const defaultSiteSettings: SiteSettings = {
   shipping: {
+    expressFee: siteConfig.shipping.methods.express.flatFee,
     standardFee: siteConfig.shipping.methods.standard.flatFee,
     pickupFee: siteConfig.shipping.methods.pickup.flatFee,
     freeStandardEnabled: true,
     freeStandardThreshold: siteConfig.shipping.freeThreshold,
-    deliveryPaymentLink: null,
   },
   logo: { url: null },
   topLogo: { url: null },
@@ -232,11 +227,11 @@ function parseShipping(value: unknown): ShippingSettings {
   const raw = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
   const fallback = defaultSiteSettings.shipping;
   return {
+    expressFee: numberOr(raw.expressFee, fallback.expressFee),
     standardFee: numberOr(raw.standardFee, fallback.standardFee),
     pickupFee: numberOr(raw.pickupFee, fallback.pickupFee),
     freeStandardEnabled: booleanOr(raw.freeStandardEnabled, fallback.freeStandardEnabled),
     freeStandardThreshold: numberOr(raw.freeStandardThreshold, fallback.freeStandardThreshold),
-    deliveryPaymentLink: stringOrNull(raw.deliveryPaymentLink),
   };
 }
 

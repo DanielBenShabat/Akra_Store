@@ -136,7 +136,11 @@ export default function SettingsClient({ settings }: Props) {
           <p className="text-sm text-muted-foreground">These prices are used at checkout.</p>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div className="space-y-2">
+            <Label htmlFor="expressFee">Express delivery ₪</Label>
+            <Input id="expressFee" name="expressFee" type="number" min="0" defaultValue={settings.shipping.expressFee} />
+          </div>
           <div className="space-y-2">
             <Label htmlFor="standardFee">Standard delivery ₪</Label>
             <Input id="standardFee" name="standardFee" type="number" min="0" defaultValue={settings.shipping.standardFee} />
@@ -145,22 +149,6 @@ export default function SettingsClient({ settings }: Props) {
             <Label htmlFor="pickupFee">Self pick-up ₪</Label>
             <Input id="pickupFee" name="pickupFee" type="number" min="0" defaultValue={settings.shipping.pickupFee} />
           </div>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="deliveryPaymentLink">Standard delivery payment link (Grow)</Label>
-          <Input
-            id="deliveryPaymentLink"
-            name="deliveryPaymentLink"
-            type="url"
-            inputMode="url"
-            placeholder="https://pay.grow.link/…"
-            defaultValue={settings.shipping.deliveryPaymentLink ?? ''}
-          />
-          <p className="text-sm text-muted-foreground">
-            Shown as a second payment step when a customer picks Standard delivery. Leave empty if
-            you collect delivery another way.
-          </p>
         </div>
 
         <div className="rounded-md border border-border p-3 space-y-3">

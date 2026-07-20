@@ -29,7 +29,7 @@ const checkoutSchema = z.object({
     .regex(/^\d{5,7}$/, 'Enter a valid postal code')
     .optional()
     .or(z.literal('')),
-  shippingMethod: z.enum(['standard', 'pickup'], {
+  shippingMethod: z.enum(['express', 'standard', 'pickup'], {
     message: 'Select a shipping method',
   }),
 });
@@ -44,7 +44,12 @@ function formatShekel(amount: number): string {
 }
 
 function shippingOptionPrice(method: ShippingMethod, subtotal: number, settings: ShippingSettings): string {
-  const fee = method === 'standard' ? settings.standardFee : settings.pickupFee;
+  const fee =
+    method === 'express'
+      ? settings.expressFee
+      : method === 'standard'
+        ? settings.standardFee
+        : settings.pickupFee;
   if (fee === 0) return 'Free';
   if (method === 'standard' && settings.freeStandardEnabled && subtotal >= settings.freeStandardThreshold) {
     return 'Free';
@@ -106,7 +111,7 @@ export function CheckoutForm({ items, symbol, shippingSettings, paymentFailed, b
     formState: { errors, isSubmitting },
   } = useForm<CheckoutFormValues>({
     resolver: zodResolver(checkoutSchema),
-    defaultValues: { shippingMethod: 'standard' },
+    defaultValues: { shippingMethod: 'express' },
   });
 
   const selectedMethod = watch('shippingMethod');

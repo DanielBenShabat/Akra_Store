@@ -8,7 +8,6 @@ import { siteConfig } from '@/config/site';
 import type { Order } from '@/types';
 import type { OrderRow } from '@/lib/data-store';
 import { Badge } from '@/components/admin-ui/badge';
-import { Button } from '@/components/admin-ui/button';
 import {
   Table,
   TableHeader,
@@ -17,7 +16,7 @@ import {
   TableRow,
   TableCell,
 } from '@/components/admin-ui/table';
-import { updateOrderStatusAction, markOrderPaidAction } from './actions';
+import { updateOrderStatusAction } from './actions';
 
 const ORDER_STATUSES: Order['status'][] = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'];
 
@@ -30,10 +29,10 @@ const statusVariant: Record<string, 'default' | 'secondary' | 'destructive' | 'o
 };
 
 const shippingMethodLabel: Record<string, string> = {
+  express: 'Express Delivery',
   standard: 'Standard Delivery',
   pickup: 'Self Pick-up',
   // Legacy values from earlier orders.
-  express: 'Express Delivery',
   home: 'Home Delivery',
 };
 
@@ -59,21 +58,6 @@ export default function OrdersClient({ orders }: { orders: OrderRow[] }) {
         router.refresh();
       } else {
         toast.error(result.error ?? 'Failed to update order status');
-      }
-    });
-  }
-
-  function markPaid(order: OrderRow) {
-    setUpdatingId(order.id);
-    startTransition(async () => {
-      const result = await markOrderPaidAction(order.id);
-      setUpdatingId(null);
-
-      if (result.success) {
-        toast.success('Order confirmed — stock updated and receipt sent');
-        router.refresh();
-      } else {
-        toast.error(result.error ?? 'Failed to confirm order');
       }
     });
   }
@@ -131,33 +115,21 @@ export default function OrdersClient({ orders }: { orders: OrderRow[] }) {
               </TableCell>
               <TableCell>{new Date(order.created_at).toLocaleDateString()}</TableCell>
               <TableCell>
-                <div className="flex flex-col items-start gap-2">
-                  <div className="flex items-center gap-2">
-                    <Badge variant={statusVariant[order.status] ?? 'outline'}>{order.status}</Badge>
-                    <select
-                      value={order.status}
-                      onChange={(e) => updateStatus(order, e.target.value as Order['status'])}
-                      disabled={isPending && updatingId === order.id}
-                      className="h-8 rounded-md border border-input bg-background px-2 text-sm"
-                      aria-label={`Update status for order ${order.id.slice(0, 8)}`}
-                    >
-                      {ORDER_STATUSES.map((status) => (
-                        <option key={status} value={status}>
-                          {status}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  {order.status === 'pending' && (
-                    <Button
-                      size="sm"
-                      onClick={() => markPaid(order)}
-                      disabled={isPending && updatingId === order.id}
-                      className="h-7 bg-foreground text-background hover:bg-foreground/90"
-                    >
-                      Mark as paid
-                    </Button>
-                  )}
+                <div className="flex items-center gap-2">
+                  <Badge variant={statusVariant[order.status] ?? 'outline'}>{order.status}</Badge>
+                  <select
+                    value={order.status}
+                    onChange={(e) => updateStatus(order, e.target.value as Order['status'])}
+                    disabled={isPending && updatingId === order.id}
+                    className="h-8 rounded-md border border-input bg-background px-2 text-sm"
+                    aria-label={`Update status for order ${order.id.slice(0, 8)}`}
+                  >
+                    {ORDER_STATUSES.map((status) => (
+                      <option key={status} value={status}>
+                        {status}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </TableCell>
               <TableCell className="text-right">

@@ -10,9 +10,9 @@ do $$ begin
 exception when duplicate_object then null;
 end $$;
 
--- Shipping method chosen at checkout is stored as free text (`standard`,
--- `pickup`, …) so methods can be added/renamed without an enum migration.
--- The canonical set lives in src/config/site.ts.
+-- Shipping method chosen at checkout is stored as free text (`express`,
+-- `standard`, `pickup`, …) so methods can be added/renamed without an enum
+-- migration. The canonical set lives in src/config/site.ts.
 
 create table if not exists categories (
   id            uuid primary key default gen_random_uuid(),
@@ -33,12 +33,7 @@ create table if not exists products (
   sizes         text[],
   image_urls    text[], -- ordered; first element is the primary thumbnail
   category_id   uuid references categories(id) on delete set null,
-  is_goosebumps boolean not null default false,
-  -- Storefront placement: 'available' (shop), 'unavailable' (hidden/sold), 'archive'.
-  status        text not null default 'available' check (status in ('available', 'unavailable', 'archive')),
-  display_order integer not null default 0,
-  -- Grow hosted payment link that charges for this exact piece (links checkout).
-  payment_link  text
+  is_goosebumps boolean not null default false
 );
 
 create table if not exists archive_items (
@@ -65,7 +60,7 @@ create table if not exists orders (
   postal_code       text,
   subtotal          numeric(10, 2) not null,
   shipping          numeric(10, 2) not null default 0,
-  shipping_method   text not null default 'standard',
+  shipping_method   text not null default 'express',
   total             numeric(10, 2),
   status            order_status not null default 'pending',
   -- External gateway reference (e.g. Grow process id). Unique → webhook idempotency.
@@ -80,8 +75,6 @@ create unique index if not exists orders_payment_reference_key on orders(payment
 -- Performance indexes for hot read paths under drop traffic.
 create index if not exists products_is_goosebumps_idx on products(is_goosebumps);
 create index if not exists products_category_id_idx on products(category_id);
-create index if not exists products_status_idx on products(status);
-create index if not exists products_display_order_idx on products(display_order);
 create index if not exists orders_status_idx on orders(status);
 create index if not exists orders_created_at_idx on orders(created_at desc);
 

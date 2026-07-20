@@ -41,7 +41,6 @@ type DbProduct = {
   image_urls: string[] | null;
   is_goosebumps: boolean;
   status: ProductStatus | null;
-  payment_link: string | null;
 };
 
 type DbCategory = {
@@ -63,7 +62,6 @@ function toProduct(row: DbProduct): Product {
     images: row.image_urls ?? [],
     isGoosebumps: row.is_goosebumps,
     status: row.status ?? (row.stock < 1 ? 'unavailable' : 'available'),
-    paymentLink: row.payment_link ?? null,
   };
 }
 
@@ -87,7 +85,6 @@ function toRow(data: Partial<Omit<Product, 'id'>>): Record<string, unknown> {
   if ('categoryId' in data) row.category_id = data.categoryId ?? null;
   if ('isGoosebumps' in data) row.is_goosebumps = data.isGoosebumps;
   if ('status' in data) row.status = data.status;
-  if ('paymentLink' in data) row.payment_link = data.paymentLink ?? null;
   return row;
 }
 
@@ -350,82 +347,6 @@ export async function getOrderById(id: string): Promise<OrderSummary | null> {
     total: row.total,
     status: row.status,
     productIds: (row.order_items ?? []).map((i) => i.product_id),
-  };
-}
-
-export interface OrderPaymentLine {
-  productId: string;
-  name: string;
-  size: string;
-  price: number;
-  /** Current Grow payment link for this product (null if the admin hasn't set one). */
-  paymentLink: string | null;
-}
-
-export interface OrderPaymentDetails {
-  id: string;
-  status: Order['status'];
-  shippingMethod: string;
-  subtotal: number;
-  shipping: number;
-  total: number;
-  items: OrderPaymentLine[];
-}
-
-/**
- * Everything the "Complete your payment" page needs: the order's line items with
- * each product's current Grow payment link, plus totals. Server-only.
- */
-export async function getOrderPaymentDetails(orderId: string): Promise<OrderPaymentDetails | null> {
-  const { data: order, error } = await supabase
-    .from('orders')
-    .select('id, status, shipping_method, subtotal, shipping, total, order_items(product_id, name, size, price)')
-    .eq('id', orderId)
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!order) return null;
-
-  type Row = {
-    id: string;
-    status: Order['status'];
-    shipping_method: string;
-    subtotal: number;
-    shipping: number;
-    total: number;
-    order_items: { product_id: string; name: string; size: string; price: number }[] | null;
-  };
-  const row = order as Row;
-  const lineItems = row.order_items ?? [];
-
-  // Resolve the current payment link for each product (links can be set/changed
-  // by the admin after the order was placed).
-  const productIds = [...new Set(lineItems.map((i) => i.product_id))];
-  const linkByProduct = new Map<string, string | null>();
-  if (productIds.length > 0) {
-    const { data: products, error: prodError } = await supabase
-      .from('products')
-      .select('id, payment_link')
-      .in('id', productIds);
-    if (prodError) throw new Error(prodError.message);
-    for (const p of products ?? []) {
-      linkByProduct.set(p.id as string, (p.payment_link as string | null) ?? null);
-    }
-  }
-
-  return {
-    id: row.id,
-    status: row.status,
-    shippingMethod: row.shipping_method,
-    subtotal: row.subtotal,
-    shipping: row.shipping,
-    total: row.total,
-    items: lineItems.map((i) => ({
-      productId: i.product_id,
-      name: i.name,
-      size: i.size,
-      price: i.price,
-      paymentLink: linkByProduct.get(i.product_id) ?? null,
-    })),
   };
 }
 
