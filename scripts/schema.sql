@@ -37,8 +37,9 @@ create table if not exists products (
   -- Storefront placement: 'available' (shop), 'unavailable' (hidden/sold), 'archive'.
   status        text not null default 'available' check (status in ('available', 'unavailable', 'archive')),
   display_order integer not null default 0,
-  -- Grow hosted payment link that charges for this exact piece (links checkout).
-  payment_link  text
+  -- Grow payment links (links checkout): pickup = item price, delivery = item + fee.
+  payment_link          text,
+  payment_link_delivery text
 );
 
 create table if not exists archive_items (

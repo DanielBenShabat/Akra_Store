@@ -8,7 +8,6 @@ import { z } from 'zod';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { formatPrice } from '@/lib/utils';
-import { siteConfig } from '@/config/site';
 import { cartSubtotal } from '@/lib/cart-store';
 import { track } from '@/lib/track';
 import { ISRAELI_CITIES, isValidCity } from '@/lib/israeli-cities';
@@ -29,27 +28,14 @@ const checkoutSchema = z.object({
     .regex(/^\d{5,7}$/, 'Enter a valid postal code')
     .optional()
     .or(z.literal('')),
-  shippingMethod: z.enum(['standard', 'pickup'], {
-    message: 'Select a shipping method',
-  }),
 });
 
 type CheckoutFormValues = z.infer<typeof checkoutSchema>;
 
-const shippingMethods = siteConfig.shipping.methods;
-const shippingMethodKeys = Object.keys(shippingMethods) as ShippingMethod[];
-
-function formatShekel(amount: number): string {
-  return `₪${amount}`;
-}
-
-function shippingOptionPrice(method: ShippingMethod, subtotal: number, settings: ShippingSettings): string {
-  const fee = method === 'standard' ? settings.standardFee : settings.pickupFee;
-  if (fee === 0) return 'Free';
-  if (method === 'standard' && settings.freeStandardEnabled && subtotal >= settings.freeStandardThreshold) {
-    return 'Free';
-  }
-  return formatShekel(fee);
+interface Totals {
+  subtotal: number;
+  shipping: number;
+  total: number;
 }
 
 function Field({
@@ -84,14 +70,15 @@ interface Props {
 export function CheckoutForm({ items, symbol, shippingSettings, paymentFailed, buyNowProductId }: Props) {
   const productIds = items.map((i) => i.productId);
 
-  // Server is the single source of truth for totals; we seed display with a
-  // client-side subtotal estimate, then quote from the server on mount and on
-  // every shipping-method change.
+  // Server is the source of truth for totals. Seed both methods with a client
+  // estimate, then quote each from the server on mount / when items change.
   const estimatedSubtotal = cartSubtotal(items);
-  const [totals, setTotals] = useState({
-    subtotal: estimatedSubtotal,
-    shipping: 0,
-    total: estimatedSubtotal,
+  const seed: Totals = { subtotal: estimatedSubtotal, shipping: 0, total: estimatedSubtotal };
+  const [pickupTotals, setPickupTotals] = useState<Totals>(seed);
+  const [deliveryTotals, setDeliveryTotals] = useState<Totals>({
+    ...seed,
+    shipping: shippingSettings.standardFee,
+    total: estimatedSubtotal + shippingSettings.standardFee,
   });
   const [quoting, setQuoting] = useState(true);
 
@@ -102,27 +89,27 @@ export function CheckoutForm({ items, symbol, shippingSettings, paymentFailed, b
   const {
     register,
     handleSubmit,
-    watch,
     formState: { errors, isSubmitting },
-  } = useForm<CheckoutFormValues>({
-    resolver: zodResolver(checkoutSchema),
-    defaultValues: { shippingMethod: 'standard' },
-  });
+  } = useForm<CheckoutFormValues>({ resolver: zodResolver(checkoutSchema) });
 
-  const selectedMethod = watch('shippingMethod');
   const productIdsKey = productIds.join(',');
 
   useEffect(() => {
     let active = true;
     setQuoting(true);
-    quoteOrderAction({ productIds: productIdsKey.split(','), shippingMethod: selectedMethod })
-      .then((quote) => {
+    const ids = productIdsKey.split(',');
+    Promise.all([
+      quoteOrderAction({ productIds: ids, shippingMethod: 'pickup' }),
+      quoteOrderAction({ productIds: ids, shippingMethod: 'standard' }),
+    ])
+      .then(([pickup, delivery]) => {
         if (!active) return;
-        if (quote.error) {
-          toast.error(quote.error);
+        if (pickup.error || delivery.error) {
+          toast.error(pickup.error ?? delivery.error ?? 'Could not calculate totals');
           return;
         }
-        setTotals({ subtotal: quote.subtotal, shipping: quote.shipping, total: quote.total });
+        setPickupTotals({ subtotal: pickup.subtotal, shipping: pickup.shipping, total: pickup.total });
+        setDeliveryTotals({ subtotal: delivery.subtotal, shipping: delivery.shipping, total: delivery.total });
       })
       .finally(() => {
         if (active) setQuoting(false);
@@ -131,19 +118,18 @@ export function CheckoutForm({ items, symbol, shippingSettings, paymentFailed, b
     return () => {
       active = false;
     };
-  }, [selectedMethod, productIdsKey]);
+  }, [productIdsKey]);
 
-  async function onSubmit(data: CheckoutFormValues) {
-    // Funnel: fired once the form validates and the shopper commits to paying,
-    // just before we create the pending order and hand off to the gateway.
-    track('checkout-submit', { items: items.length, value: totals.total });
+  async function submitWithMethod(data: CheckoutFormValues, method: ShippingMethod) {
+    const total = method === 'standard' ? deliveryTotals.total : pickupTotals.total;
+    // Funnel: fired once the form validates and the shopper commits to paying.
+    track('checkout-submit', { items: items.length, value: total, method });
 
-    const { shippingMethod, ...shipping } = data;
     const result = await createPendingOrderAction({
       items: items.map((i) => ({ productId: i.productId, size: i.size })),
-      shippingMethod,
+      shippingMethod: method,
       buyNowProductId: buyNowProductId ?? undefined,
-      shipping,
+      shipping: data,
     });
 
     if (result.error || !result.redirectUrl) {
@@ -152,14 +138,15 @@ export function CheckoutForm({ items, symbol, shippingSettings, paymentFailed, b
     }
 
     // The cart is intentionally NOT cleared here — the order is only 'pending'.
-    // Confirmation (and the cart purge on the success page) happens after the
-    // gateway captures payment, so an abandoned/failed payment keeps the cart.
-    // Hand the browser to the provider's next URL (hosted gateway, or success).
+    // It is purged on the success page once payment is confirmed, so an
+    // abandoned/failed payment keeps the cart intact.
     window.location.assign(result.redirectUrl);
   }
 
+  const busy = quoting || isSubmitting;
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
+    <form className="flex flex-col gap-6">
       <p className="text-nav font-bold uppercase tracking-nav border-b border-border pb-3">
         Order Summary
       </p>
@@ -233,72 +220,47 @@ export function CheckoutForm({ items, symbol, shippingSettings, paymentFailed, b
       </Field>
 
       <p className="text-nav font-bold uppercase tracking-nav border-b border-border pb-3">
-        Shipping Method
+        Choose How to Pay
       </p>
 
+      <div className="border-t border-border pt-4 flex items-center justify-between">
+        <span className="text-nav text-muted-foreground uppercase tracking-nav">Subtotal</span>
+        <span className="text-nav">{formatPrice(pickupTotals.subtotal, symbol)}</span>
+      </div>
+
       <div className="flex flex-col gap-3">
-        {shippingSettings.freeStandardEnabled && totals.subtotal < shippingSettings.freeStandardThreshold && (
-          <p className="text-badge font-medium uppercase tracking-nav text-muted-foreground">
-            Free delivery over {formatShekel(shippingSettings.freeStandardThreshold)}
-          </p>
-        )}
-        {shippingMethodKeys.map((method) => {
-          const config = shippingMethods[method];
-          const isSelected = selectedMethod === method;
-          return (
-            <label
-              key={method}
-              className={`flex items-start gap-3 border p-4 cursor-pointer transition-colors ${
-                isSelected ? 'border-foreground' : 'border-border hover:border-foreground/50'
-              }`}
-            >
-              <input
-                type="radio"
-                value={method}
-                className="mt-1 accent-foreground"
-                {...register('shippingMethod')}
-              />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-3">
-                  <p className="text-nav font-medium">{config.label}</p>
-                  <p className="text-nav font-medium whitespace-nowrap">
-                    {shippingOptionPrice(method, totals.subtotal, shippingSettings)}
-                  </p>
-                </div>
-                <p className="text-badge text-muted-foreground">{config.description}</p>
-              </div>
-            </label>
-          );
-        })}
-        {errors.shippingMethod && (
-          <p className="text-badge text-accent-warning">{errors.shippingMethod.message}</p>
-        )}
-      </div>
-
-      <div className="border-t border-border pt-4 flex flex-col gap-2">
-        <div className="flex items-center justify-between">
-          <span className="text-nav text-muted-foreground uppercase tracking-nav">Subtotal</span>
-          <span className="text-nav">{formatPrice(totals.subtotal, symbol)}</span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-nav text-muted-foreground uppercase tracking-nav">Shipping</span>
-          <span className="text-nav">
-            {quoting ? '…' : totals.shipping === 0 ? 'Free' : formatPrice(totals.shipping, symbol)}
+        {/* Delivery — pays the item's "with delivery" Grow link (item + delivery fee). */}
+        <button
+          type="button"
+          disabled={busy}
+          onClick={handleSubmit((data) => submitWithMethod(data, 'standard'))}
+          className="w-full bg-foreground text-on-dark text-nav font-medium uppercase tracking-nav py-4 hover:bg-foreground/90 transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2"
+        >
+          <span className="flex items-center justify-between px-4">
+            <span>Pay with Delivery</span>
+            <span>{quoting ? '…' : formatPrice(deliveryTotals.total, symbol)}</span>
           </span>
-        </div>
-        <div className="flex items-center justify-between border-t border-border pt-2 mt-1">
-          <span className="text-nav font-bold uppercase tracking-nav">Total</span>
-          <span className="text-price font-bold">{formatPrice(totals.total, symbol)}</span>
-        </div>
-      </div>
+        </button>
+        <p className="text-badge text-muted-foreground text-center">
+          Standard courier · delivery fee {formatPrice(deliveryTotals.shipping, symbol)} included
+        </p>
 
-      <button
-        type="submit"
-        disabled={isSubmitting || quoting}
-        className="w-full bg-foreground text-on-dark text-nav font-medium uppercase tracking-nav py-4 hover:bg-foreground/90 transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2"
-      >
-        {isSubmitting ? 'Processing…' : `Continue to Payment · ${formatPrice(totals.total, symbol)}`}
-      </button>
+        {/* Pickup — pays the item's item-only Grow link. */}
+        <button
+          type="button"
+          disabled={busy}
+          onClick={handleSubmit((data) => submitWithMethod(data, 'pickup'))}
+          className="w-full border border-foreground text-foreground text-nav font-medium uppercase tracking-nav py-4 hover:bg-foreground hover:text-on-dark transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2"
+        >
+          <span className="flex items-center justify-between px-4">
+            <span>Pay for Self Pick-up</span>
+            <span>{quoting ? '…' : formatPrice(pickupTotals.total, symbol)}</span>
+          </span>
+        </button>
+        <p className="text-badge text-muted-foreground text-center">
+          Modi&apos;in area, by prior arrangement · no delivery fee
+        </p>
+      </div>
 
       <Link
         href="/"

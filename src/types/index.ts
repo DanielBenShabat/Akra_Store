@@ -27,10 +27,13 @@ export interface Product {
   isGoosebumps: boolean;
   status: ProductStatus;
   /**
-   * Grow hosted payment link for this specific piece (1-of-1 → one link per item).
-   * Null until the admin pastes it. Used by the `links` payment provider at checkout.
+   * Grow payment links for this specific piece (1-of-1 → its own links). Used by
+   * the `links` payment provider at checkout. Null until the admin pastes them.
+   * - `paymentLink`         — pickup price (item only, no delivery)
+   * - `paymentLinkDelivery` — delivery price (item + delivery fee)
    */
   paymentLink: string | null;
+  paymentLinkDelivery: string | null;
 }
 
 /**

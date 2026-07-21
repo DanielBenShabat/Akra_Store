@@ -147,21 +147,10 @@ export default function SettingsClient({ settings }: Props) {
           </div>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="deliveryPaymentLink">Standard delivery payment link (Grow)</Label>
-          <Input
-            id="deliveryPaymentLink"
-            name="deliveryPaymentLink"
-            type="url"
-            inputMode="url"
-            placeholder="https://pay.grow.link/…"
-            defaultValue={settings.shipping.deliveryPaymentLink ?? ''}
-          />
-          <p className="text-sm text-muted-foreground">
-            Shown as a second payment step when a customer picks Standard delivery. Leave empty if
-            you collect delivery another way.
-          </p>
-        </div>
+        <p className="text-sm text-muted-foreground">
+          These fees set the totals shown at checkout. The actual charge comes from each product&apos;s
+          two Grow links (pickup price and delivery price), set per product in Inventory.
+        </p>
 
         <div className="rounded-md border border-border p-3 space-y-3">
           <label className="flex items-center gap-2 text-sm font-medium">

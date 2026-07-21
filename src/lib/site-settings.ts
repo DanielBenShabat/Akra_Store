@@ -12,12 +12,6 @@ export interface ShippingSettings {
   pickupFee: number;
   freeStandardEnabled: boolean;
   freeStandardThreshold: number;
-  /**
-   * Shared Grow payment link for the flat Standard-delivery fee. When the
-   * `links` payment provider is active and the customer picks Standard delivery,
-   * this link is shown as a second payment step on the pay page. Null when unset.
-   */
-  deliveryPaymentLink: string | null;
 }
 
 export interface ImageSetting {
@@ -190,7 +184,6 @@ export const defaultSiteSettings: SiteSettings = {
     pickupFee: siteConfig.shipping.methods.pickup.flatFee,
     freeStandardEnabled: true,
     freeStandardThreshold: siteConfig.shipping.freeThreshold,
-    deliveryPaymentLink: null,
   },
   logo: { url: null },
   topLogo: { url: null },
@@ -236,7 +229,6 @@ function parseShipping(value: unknown): ShippingSettings {
     pickupFee: numberOr(raw.pickupFee, fallback.pickupFee),
     freeStandardEnabled: booleanOr(raw.freeStandardEnabled, fallback.freeStandardEnabled),
     freeStandardThreshold: numberOr(raw.freeStandardThreshold, fallback.freeStandardThreshold),
-    deliveryPaymentLink: stringOrNull(raw.deliveryPaymentLink),
   };
 }
 

@@ -3,7 +3,6 @@ import { notFound, redirect } from 'next/navigation';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { getOrderPaymentDetails } from '@/lib/data-store';
-import { getSiteSettings } from '@/lib/site-settings';
 import { formatPrice } from '@/lib/utils';
 import { siteConfig } from '@/config/site';
 
@@ -25,10 +24,20 @@ export default async function PayPage({ params }: Props) {
   }
 
   const symbol = siteConfig.currency.symbol;
-  const settings = await getSiteSettings();
-  const deliveryLink = settings.shipping.deliveryPaymentLink;
-  // A positive shipping charge means Standard delivery was chosen.
-  const needsDeliveryPayment = order.shipping > 0;
+  const isDelivery = order.shippingMethod === 'standard';
+
+  // The delivery fee is charged once per order by paying the FIRST item via its
+  // "with delivery" Grow link (item price + fee). Every other item — and all
+  // items on a pickup order — uses its item-only link.
+  const lines = order.items.map((item, index) => {
+    const useDelivery = isDelivery && index === 0;
+    return {
+      ...item,
+      includesDelivery: useDelivery,
+      link: useDelivery ? item.deliveryLink : item.pickupLink,
+      amount: useDelivery ? item.price + order.shipping : item.price,
+    };
+  });
 
   return (
     <>
@@ -44,31 +53,34 @@ export default async function PayPage({ params }: Props) {
 
           <p className="text-nav text-muted-foreground leading-relaxed mb-8">
             Pay for each item below using its secure Grow link. Payments open in a new tab. Once we
-            confirm your payment, we&apos;ll email you and arrange delivery or pickup.
+            confirm your payment, we&apos;ll email you and arrange {isDelivery ? 'delivery' : 'pickup'}.
           </p>
 
           <ol className="flex flex-col gap-4">
-            {order.items.map((item, index) => (
-              <li key={item.productId} className="border border-border p-4 flex flex-col gap-3">
+            {lines.map((line, index) => (
+              <li key={line.productId} className="border border-border p-4 flex flex-col gap-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-nav font-medium leading-snug">
-                      {index + 1}. {item.name}
+                      {index + 1}. {line.name}
                     </p>
-                    <p className="text-badge text-muted-foreground">Size: {item.size}</p>
+                    <p className="text-badge text-muted-foreground">
+                      Size: {line.size}
+                      {line.includesDelivery && ` · includes ${formatPrice(order.shipping, symbol)} delivery`}
+                    </p>
                   </div>
                   <span className="text-nav font-bold whitespace-nowrap">
-                    {formatPrice(item.price, symbol)}
+                    {formatPrice(line.amount, symbol)}
                   </span>
                 </div>
-                {item.paymentLink ? (
+                {line.link ? (
                   <a
-                    href={item.paymentLink}
+                    href={line.link}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-full bg-foreground text-on-dark text-nav font-medium uppercase tracking-nav py-3 text-center hover:bg-foreground/90 transition-colors"
                   >
-                    Pay {formatPrice(item.price, symbol)}
+                    Pay {formatPrice(line.amount, symbol)}
                   </a>
                 ) : (
                   <p className="text-badge text-accent-warning border border-accent-warning/40 p-3">
@@ -77,36 +89,6 @@ export default async function PayPage({ params }: Props) {
                 )}
               </li>
             ))}
-
-            {needsDeliveryPayment && (
-              <li className="border border-border p-4 flex flex-col gap-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-nav font-medium leading-snug">
-                      {order.items.length + 1}. Standard Delivery
-                    </p>
-                    <p className="text-badge text-muted-foreground">Courier to your address</p>
-                  </div>
-                  <span className="text-nav font-bold whitespace-nowrap">
-                    {formatPrice(order.shipping, symbol)}
-                  </span>
-                </div>
-                {deliveryLink ? (
-                  <a
-                    href={deliveryLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full bg-foreground text-on-dark text-nav font-medium uppercase tracking-nav py-3 text-center hover:bg-foreground/90 transition-colors"
-                  >
-                    Pay {formatPrice(order.shipping, symbol)}
-                  </a>
-                ) : (
-                  <p className="text-badge text-muted-foreground border border-border p-3">
-                    We&apos;ll arrange the delivery fee with you directly after your items are paid.
-                  </p>
-                )}
-              </li>
-            )}
           </ol>
 
           <dl className="mt-8 flex flex-col divide-y divide-border border-t border-b border-border">
@@ -115,7 +97,9 @@ export default async function PayPage({ params }: Props) {
               <dd className="text-nav">{formatPrice(order.subtotal, symbol)}</dd>
             </div>
             <div className="flex items-center justify-between py-3">
-              <dt className="text-nav uppercase tracking-nav text-muted-foreground">Shipping</dt>
+              <dt className="text-nav uppercase tracking-nav text-muted-foreground">
+                {isDelivery ? 'Delivery' : 'Pickup'}
+              </dt>
               <dd className="text-nav">
                 {order.shipping === 0 ? 'Free' : formatPrice(order.shipping, symbol)}
               </dd>

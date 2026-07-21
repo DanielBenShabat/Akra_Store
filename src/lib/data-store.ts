@@ -42,6 +42,7 @@ type DbProduct = {
   is_goosebumps: boolean;
   status: ProductStatus | null;
   payment_link: string | null;
+  payment_link_delivery: string | null;
 };
 
 type DbCategory = {
@@ -64,6 +65,7 @@ function toProduct(row: DbProduct): Product {
     isGoosebumps: row.is_goosebumps,
     status: row.status ?? (row.stock < 1 ? 'unavailable' : 'available'),
     paymentLink: row.payment_link ?? null,
+    paymentLinkDelivery: row.payment_link_delivery ?? null,
   };
 }
 
@@ -88,6 +90,7 @@ function toRow(data: Partial<Omit<Product, 'id'>>): Record<string, unknown> {
   if ('isGoosebumps' in data) row.is_goosebumps = data.isGoosebumps;
   if ('status' in data) row.status = data.status;
   if ('paymentLink' in data) row.payment_link = data.paymentLink ?? null;
+  if ('paymentLinkDelivery' in data) row.payment_link_delivery = data.paymentLinkDelivery ?? null;
   return row;
 }
 
@@ -358,8 +361,9 @@ export interface OrderPaymentLine {
   name: string;
   size: string;
   price: number;
-  /** Current Grow payment link for this product (null if the admin hasn't set one). */
-  paymentLink: string | null;
+  /** Grow links for this product: pickup = item price, delivery = item + fee. */
+  pickupLink: string | null;
+  deliveryLink: string | null;
 }
 
 export interface OrderPaymentDetails {
@@ -397,18 +401,21 @@ export async function getOrderPaymentDetails(orderId: string): Promise<OrderPaym
   const row = order as Row;
   const lineItems = row.order_items ?? [];
 
-  // Resolve the current payment link for each product (links can be set/changed
+  // Resolve the current payment links for each product (links can be set/changed
   // by the admin after the order was placed).
   const productIds = [...new Set(lineItems.map((i) => i.product_id))];
-  const linkByProduct = new Map<string, string | null>();
+  const linksByProduct = new Map<string, { pickup: string | null; delivery: string | null }>();
   if (productIds.length > 0) {
     const { data: products, error: prodError } = await supabase
       .from('products')
-      .select('id, payment_link')
+      .select('id, payment_link, payment_link_delivery')
       .in('id', productIds);
     if (prodError) throw new Error(prodError.message);
     for (const p of products ?? []) {
-      linkByProduct.set(p.id as string, (p.payment_link as string | null) ?? null);
+      linksByProduct.set(p.id as string, {
+        pickup: (p.payment_link as string | null) ?? null,
+        delivery: (p.payment_link_delivery as string | null) ?? null,
+      });
     }
   }
 
@@ -424,7 +431,8 @@ export async function getOrderPaymentDetails(orderId: string): Promise<OrderPaym
       name: i.name,
       size: i.size,
       price: i.price,
-      paymentLink: linkByProduct.get(i.product_id) ?? null,
+      pickupLink: linksByProduct.get(i.product_id)?.pickup ?? null,
+      deliveryLink: linksByProduct.get(i.product_id)?.delivery ?? null,
     })),
   };
 }
@@ -532,7 +540,7 @@ export async function createPendingOrder(
 
   const { data: products, error: productsError } = await supabase
     .from('products')
-    .select('id, name, price, stock, status')
+    .select('id, name, price, stock, status, payment_link, payment_link_delivery')
     .in('id', ids);
   if (productsError) throw new Error(productsError.message);
 
@@ -631,7 +639,20 @@ export async function createPendingOrder(
     return { orderId, redirectUrl: `${siteConfig.url}/checkout/success?order=${orderId}` };
   }
 
-  // Hosted redirect flow (e.g. Grow): send the browser to the gateway.
+  // Grow payment links: a single-item order pays via that item's own link for
+  // the chosen method, so send the browser straight there (no interim page).
+  // Multi-item orders can't be one link → fall through to the pay page, which
+  // lists a button per item.
+  if (provider.name === 'links' && lines.length === 1) {
+    const product = lines[0];
+    const directLink =
+      input.shippingMethod === 'standard'
+        ? (product.payment_link_delivery as string | null)
+        : (product.payment_link as string | null);
+    if (directLink) return { orderId, redirectUrl: directLink };
+  }
+
+  // Hosted redirect flow (Grow gateway, or the links pay page): send the browser on.
   if (!payment.redirectUrl) {
     throw new Error('Payment provider did not return a redirect URL');
   }
