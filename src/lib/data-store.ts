@@ -636,7 +636,9 @@ export async function createPendingOrder(
     if (result === 'insufficient_stock') {
       throw new UserFacingError('One or more items just sold out. Your order was not completed.');
     }
-    return { orderId, redirectUrl: `${siteConfig.url}/checkout/success?order=${orderId}` };
+    // Relative URL → the browser stays on the current domain (works regardless
+    // of whether NEXT_PUBLIC_SITE_URL is configured on the server).
+    return { orderId, redirectUrl: `/checkout/success?order=${orderId}` };
   }
 
   // Grow payment links: a single-item order pays via that item's own link for

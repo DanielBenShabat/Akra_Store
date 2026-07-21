@@ -1,5 +1,4 @@
 import 'server-only';
-import { siteConfig } from '@/config/site';
 import type { PaymentProvider, PaymentRequest, PaymentResult } from './types';
 
 /**
@@ -18,7 +17,9 @@ export const linksProvider: PaymentProvider = {
     return {
       status: 'pending',
       reference: `LINK-${request.orderId}`,
-      redirectUrl: `${siteConfig.url}/checkout/pay/${request.orderId}`,
+      // Relative so the browser stays on whatever domain it's already on
+      // (no dependency on NEXT_PUBLIC_SITE_URL being set on the server).
+      redirectUrl: `/checkout/pay/${request.orderId}`,
     };
   },
 };
